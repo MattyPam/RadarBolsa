@@ -1,0 +1,90 @@
+{
+  "fecha": "2026-11-21",
+  "contexto": "Desde finales de octubre hay una venta fuerte de todo lo ligado a la inteligencia artificial: chips, memoria y grandes tecnológicas. El 5 de noviembre el S&P 500 tuvo su peor día desde abril de 2025 y el Nasdaq entró en corrección. A eso se suman la dimisión de Jensen Huang en Nvidia (12/11), nuevas restricciones a la exportación de chips y un VIX cerca de 36 (nerviosismo alto). El fondo común es la duda sobre si el enorme gasto en IA de las grandes tecnológicas va a rentabilizarse. Europa ha caído bastante menos, y el MSCI World en euros está en torno a un −7% desde su máximo: por eso el plan por tramos todavía no ha activado ninguno. Los defensivos (consumo básico, utilities) apenas se han movido.",
+  "fichas": [
+    {
+      "ticker": "SMH",
+      "nombre": "Semiconductores (sector)",
+      "negocio": "Empresas que diseñan, fabrican o equipan la fabricación de chips: Nvidia, TSMC, Broadcom, ASML, AMD, Micron… Es el sector que más se había beneficiado del gasto en centros de datos para IA.",
+      "por_que_cae": "Es el epicentro de la venta: dudas sobre la duración del ciclo de inversión en IA, la salida de Huang, nuevas restricciones a exportaciones de chips y una caída muy fuerte de las empresas de memoria. Está en torno a un −40% desde su máximo.",
+      "riesgo": "Es un sector cíclico: cuando los clientes frenan pedidos, ingresos y márgenes caen a la vez y rápido. La volatilidad del ETF ronda el 44% anual; caídas del 50–60% ya han ocurrido (2000–2002, 2008, 2022).",
+      "oportunidad": "Los resultados de las empresas líderes siguen creciendo con fuerza (ver Nvidia). Si el gasto en IA solo se modera y no se hunde, el sector parte de precios mucho más bajos que en verano.",
+      "invalida": "Que los grandes clientes (Microsoft, Alphabet, Amazon, Meta) recorten sus previsiones de inversión para 2027.",
+      "abogado_del_diablo": "La estadística del panel muestra que, tras caídas ≥20%, este sector solo estaba más alto 6 meses después en un 60% de los casos, peor que comprar cualquier día, y con un escenario malo de −40%. Las caídas en este sector tienden a continuar más de lo que parece.",
+      "conclusion": "Es el producto con más potencial de rebote, pero también el más arriesgado del panel. Si se entra, mejor con una parte pequeña, por tramos y con un horizonte de 12 meses o más, no de 1 a 3 meses. Comprable en Europa: VanEck Semiconductor UCITS ETF.",
+      "fuentes": ["https://pro.thestreet.com/market-commentary/dow-peak-quickly-turns-to-brutal-selloff-as-investors-run", "https://www.webull.com/news/15934389224075264"]
+    },
+    {
+      "ticker": "NVDA",
+      "nombre": "Nvidia",
+      "negocio": "Diseña los procesadores (GPU) y redes que se usan para entrenar y ejecutar modelos de IA. En el último trimestre, el 93% de sus ingresos vino de centros de datos, con márgenes brutos de alrededor del 75%: es un casi monopolio con mucho poder de precio.",
+      "por_que_cae": "Dos golpes encadenados: la venta general de IA y la dimisión inmediata de su fundador y CEO, Jensen Huang, el 12/11. Le sustituye de forma interina la directora financiera, Colette Kress. Además hay nuevas restricciones a exportar chips.",
+      "riesgo": "Riesgo de liderazgo: Huang era la cara de la estrategia y de la relación con los grandes clientes, y no está claro quién lo sustituirá. Riesgo de concentración: depende de pocos clientes enormes que también diseñan sus propios chips. Riesgo político: China y las exportaciones.",
+      "oportunidad": "El negocio no se ha frenado. Resultados del 17/11: ingresos de 115.800 M$ (+103% interanual), previsión de 130.000 M$ para el trimestre siguiente (por encima de lo esperado) y 150.000 M$ más para recomprar acciones. Cotiza a unas 12 veces los beneficios esperados, el nivel más bajo desde 2012.",
+      "invalida": "Un sustituto de CEO débil o una salida de talento clave; recortes de pedidos de los grandes clientes; o que la caída del margen previsto (71–72% el próximo trimestre) se convierta en tendencia.",
+      "abogado_del_diablo": "Un PER bajo en una empresa cíclica a veces significa que los beneficios están en máximos y van a bajar, no que la acción esté barata. Los inventarios han subido por encima de su media, lo que puede anticipar una desaceleración.",
+      "conclusion": "Es un caso claro de \"empresa excelente, momento incierto\". Si el objetivo es exponerse a la IA, el ETF de semiconductores diversifica el riesgo del CEO. Como empresa suelta, solo con una parte pequeña y aceptando caídas de otro 30–50% en el camino.",
+      "fuentes": ["https://www.constellationr.com/insights/news/nvidia-posts-strong-q3-ups-q4-outlook-amid-huang-resignation", "https://stockstory.org/us/stocks/nasdaq/nvda/news/earnings/nvidia-reports-strong-q3-but-inventory-levels-increase", "https://www.khaleejtimes.com/global-ai-stocks-sink-as-nvidia-ceos-exit-deepens-sector-selloff", "https://www.earningswhispers.com/article/NVDA/r2919"]
+    },
+    {
+      "ticker": "MU",
+      "nombre": "Micron",
+      "negocio": "Fabrica chips de memoria (DRAM, HBM para IA, NAND). Es un producto con precio de mercado: cuando hay escasez, los precios y los beneficios se disparan, y cuando sobra capacidad, se hunden.",
+      "por_que_cae": "Viene de una subida enorme: sus ingresos trimestrales crecieron un 379%, hasta 54.200 M$. La acción tocó máximos en junio. Desde octubre se duda de cuánto pueden durar los precios altos de la memoria; el 5/11 cayó un 17% en un día, también por informaciones sobre la paralización de una planta en Taiwán.",
+      "riesgo": "Es el negocio más cíclico del panel (volatilidad cercana al 85% anual). Samsung y SK Hynix están ampliando capacidad, y eso es lo que históricamente pincha los precios de la memoria.",
+      "oportunidad": "La empresa prevé más ingresos el próximo trimestre (61.500 M$) y tiene una recompra de 35.000 M$ que puede empezar en diciembre. Si la demanda de memoria para IA se mantiene, los precios actuales descuentan un frenazo que aún no se ve en las cifras.",
+      "invalida": "Caída de los precios de contrato de la memoria DRAM/HBM o una previsión de ingresos a la baja.",
+      "abogado_del_diablo": "En las empresas de memoria, la acción suele caer antes que los beneficios: cuando los resultados empiezan a empeorar, la acción ya ha bajado mucho, y aun así puede seguir bajando. Tras caídas ≥40%, solo estaba más alta 6 meses después en el 56% de los casos.",
+      "conclusion": "No encaja con un perfil que busca diversificar y no vigilar a diario. Mejor tener la exposición a memoria a través del ETF de semiconductores.",
+      "fuentes": ["https://www.trefis.com/stock/mu/articles/623345/what-sent-micron-stock-lower/2026-11-06", "https://www.tikr.com/blog/micron-lost-17-in-a-day-its-35-billion-buyback-can-start-december-9", "https://kalkine.ca/news/technology/why-did-a-700-drop-hit-micron-nasdaqmu-as-memory-stocks-unwound-on-heavy-activity"]
+    },
+    {
+      "ticker": "GOOGL",
+      "nombre": "Alphabet (Google)",
+      "negocio": "Publicidad en el buscador de Google y en YouTube (la mayor parte del beneficio), más Google Cloud y participaciones en otras empresas (entre ellas, SpaceX).",
+      "por_que_cae": "Resultados del 3T (28/10) por debajo de lo esperado. El buscador creció un 12%, menos de lo previsto. Gastó 51.400 M$ en inversiones de IA en un trimestre, lo que dejó la caja generada en negativo (−9.100 M$). Además registró una pérdida contable por su participación en SpaceX. Fue su mayor caída tras unos resultados.",
+      "riesgo": "Que la IA conversacional erosione el negocio de búsqueda, que es su gallina de los huevos de oro, mientras la propia IA le obliga a gastar cifras enormes.",
+      "oportunidad": "Los ingresos siguen creciendo un 25% y el margen operativo mejoró (32%). Una parte de la caída del beneficio es contable (SpaceX), no del negocio. Históricamente, tras caídas ≥20% estaba más alta 6 meses después en el 85% de los casos.",
+      "invalida": "Que el buscador pase a crecer a un dígito durante varios trimestres, o que la inversión en IA siga subiendo sin que se acelere Google Cloud.",
+      "abogado_del_diablo": "El mercado ya no premia el crecimiento si la caja generada es negativa. Mientras dure el ciclo de inversión, puede seguir penalizada aunque el negocio crezca.",
+      "conclusion": "De las tecnológicas grandes, es de las que tiene un negocio principal más rentable y una estadística histórica más favorable. Es buena candidata para vigilar en los próximos resultados (finales de enero o febrero).",
+      "fuentes": ["https://www.trefis.com/stock/googl/articles2/621527/what-sent-alphabet-stock-lower/2026-10-30", "https://www.fool.com/investing/2026/10/29/is-ai-killing-google-s-golden-goose/"]
+    },
+    {
+      "ticker": "NKE",
+      "nombre": "Nike",
+      "negocio": "Diseña y vende calzado y ropa deportiva a través de tiendas multimarca y venta directa. Su valor depende de la marca, de la innovación en producto y del poder para fijar precios.",
+      "por_que_cae": "No es una caída de esta semana sino de varios años: está en niveles de 2014, casi un 80% por debajo de su máximo histórico. La recuperación que lidera el CEO Elliott Hill desde 2024 va más lenta de lo prometido; China cayó un 17% en el último trimestre, y el día del inversor (16–17/11) no convenció (−6,3%).",
+      "riesgo": "Pérdida de cuota frente a competidores más innovadores (Adidas, On, Hoka), aranceles y un consumidor débil. Hay muchas apuestas a la baja contra la acción.",
+      "oportunidad": "Es una marca global con una posición enorme. Si la recuperación funciona, la acción parte de un nivel muy deprimido, y en algún trimestre reciente las cifras han sido mejores de lo esperado.",
+      "invalida": "Más trimestres de caída de ventas en China o de margen sin señales de recuperación en producto.",
+      "abogado_del_diablo": "\"Ha caído mucho\" no es una razón para comprar: tras caídas ≥40%, su mediana a 6 meses fue prácticamente 0. Las recuperaciones de marcas de consumo suelen tardar años y muchas no llegan a completarse.",
+      "conclusion": "Es una apuesta de recuperación a largo plazo (2 años o más), no una oportunidad de 1 a 12 meses. Es mejor esperar a ver en los resultados que las ventas vuelven a crecer.",
+      "fuentes": ["https://fashionunited.com/news/business/nike-ceo-elliott-hill-reportedly-rallies-staff-after-investor-day-fails-to-lift-shares/2026111975852", "https://www.xtb.com/en/market-analysis/nike-slides-after-earnings-shares-hit-a-12-year-low", "https://frontofficesports.com/article/wall-street-isnt-buying-nikes-turnaround-story-yet/"]
+    },
+    {
+      "ticker": "NOVO-B.CO",
+      "nombre": "Novo Nordisk",
+      "negocio": "Farmacéutica danesa líder en diabetes y obesidad (Ozempic, Wegovy). Casi todo su valor depende de la semaglutida y de los medicamentos que vengan detrás.",
+      "por_que_cae": "Viene de una caída de más del 70% desde su máximo. En 2026 prevé que sus ventas y su beneficio bajen entre un 5% y un 13%: bajadas de precio en EE. UU., competencia de Eli Lilly y de las versiones genéricas o compuestas, y caducidad de patentes fuera de EE. UU. En septiembre, el día del inversor tampoco convenció.",
+      "riesgo": "Que la semaglutida pierda la patente a principios de la década de 2030 sin nuevos fármacos de éxito que la sustituyan; y la presión sobre los precios de los medicamentos en EE. UU.",
+      "oportunidad": "Cotiza a un múltiplo muy inferior a su media histórica. La obesidad es un mercado que sigue creciendo, la empresa tiene una píldora de Wegovy ya lanzada y su objetivo es tener más de cinco fármacos de gran éxito en 2030.",
+      "invalida": "Más fracasos en ensayos clínicos o una pérdida de cuota acelerada frente a Lilly.",
+      "abogado_del_diablo": "Una empresa con ventas en descenso y cuyo valor depende de un solo medicamento no es una \"caída temporal\": es un cambio de ciclo. Puede quedarse barata mucho tiempo.",
+      "conclusion": "Tiene un perfil de valor con riesgo concreto y difícil de juzgar sin conocimientos del sector farmacéutico. Para tener exposición a salud, el ETF sectorial diversifica entre muchas farmacéuticas.",
+      "fuentes": ["https://www.yahoo.com/news/articles/novo-nordisk-warns-2026-sales-165936126.html", "https://www.bnnbloomberg.ca/business/company-news/2026/09/21/wegovy-maker-novo-shares-slump-as-management-grilled-on-pricing-ma"]
+    },
+    {
+      "ticker": "MC.PA",
+      "nombre": "LVMH",
+      "negocio": "Mayor grupo de lujo del mundo: moda y marroquinería (Louis Vuitton, Dior), relojes y joyería (Tiffany, Bulgari), vinos y licores, perfumes y Sephora.",
+      "por_que_cae": "Lleva alrededor de un −40% en 2026. La moda y la marroquinería cayeron un 5% orgánico en el 3T por la debilidad de China. Antes, la guerra de Irán afectó a las compras de clientes de Oriente Medio y el euro fuerte restó ventas. El consumidor chino está cambiando y hay más competencia de marcas locales.",
+      "riesgo": "Que no sea un bache, sino un cambio de modelo: menos consumo de logo y menos demanda china de forma permanente. Además depende del dólar y del turismo.",
+      "oportunidad": "Relojes y joyería sí crecen; la mayoría de analistas mantiene recomendación positiva; y el lujo de primer nivel suele recuperarse cuando vuelve la confianza del consumidor. Cotiza en niveles de 2020.",
+      "invalida": "Otro trimestre con la moda y la marroquinería en negativo y sin mejora en China.",
+      "abogado_del_diablo": "Su estadística es la peor del panel: tras caídas ≥30%, solo estaba más alta 6 meses después en el 25% de los casos, con mediana negativa. Sus caídas han tendido a prolongarse.",
+      "conclusion": "No hay señal de suelo todavía. Es mejor esperar a que lo confirmen los resultados de enero.",
+      "fuentes": ["https://www.retail-insight-network.com/?p=133460", "https://www.rte.ie/news/business/2026/0414/1568088-lvmh-quarterly-sales-fall/", "https://www.modaes.com/global/companies/lvmh-loses-market-value-and-falls-out-of-the-top-ten-in-europe-as-the-luxury-market-slows"]
+    }
+  ]
+}

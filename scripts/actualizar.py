@@ -195,7 +195,16 @@ def lectura(dd52, tasas) -> dict:
     txt = (f"Tras caídas ≥{usado}%{nota}, estaba más alto 6 meses después en "
            f"{pct:.0f}% de {t['n']} casos{comp}. Mediana {med:+.1f}%, "
            f"escenario malo {t['malo']:+.1f}%.")
-    nivel = "verde" if pct >= 70 else ("ambar" if pct >= 55 else "rojo")
+    # Verde solo si además mejora (o iguala con margen) a comprar cualquier día
+    ref = base.get("pct_sube") or 0
+    if pct >= 70 and pct >= ref + 3:
+        nivel = "verde"
+    elif pct >= 55:
+        nivel = "ambar"
+        if pct >= 70:
+            txt += " Buen histórico, pero no mejor que comprar cualquier día: la caída por sí sola no da ventaja."
+    else:
+        nivel = "rojo"
     return {"nivel": nivel, "tramo": tramo, "usado": usado, "texto": txt}
 
 

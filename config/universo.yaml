@@ -39,7 +39,7 @@ indices:
 # Indicadores de contexto (no se compran; ayudan a leer el momento)
 contexto:
   - {ticker: ^VIX,    nombre: "VIX (índice del miedo)"}
-  - {ticker: EURUSD=X, nombre: "Euro / dólar"}
+  - {ticker: 6E=F,    nombre: "Euro / dólar (futuro)"}
   - {ticker: GC=F,    nombre: "Oro (USD/onza)"}
   - {ticker: BZ=F,    nombre: "Petróleo Brent (USD)"}
 
