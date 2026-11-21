@@ -313,6 +313,8 @@ def main():
     min_casos = radar.get("min_casos", 8)
     q = cfg.get("referencia_percentil", 80)
     SERIES.mkdir(parents=True, exist_ok=True)
+    for f in SERIES.glob("*.json"):
+        f.unlink()  # se regeneran cada día
     ahora = datetime.now(timezone.utc).astimezone(ZoneInfo("Europe/Madrid"))
     hoy = ahora.strftime("%Y-%m-%d")
 

@@ -333,7 +333,7 @@ function sparkline(s, color){
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" vector-effect="non-scaling-stroke"/></svg>`;
 }
 const SERIE = {};
-async function serie(t){ if (SERIE[t] !== undefined) return SERIE[t]; try { const r = await fetch(`data/series/${fname(t)}.json`); SERIE[t] = r.ok ? await r.json() : null; } catch(e) { SERIE[t] = null; } return SERIE[t]; }
+async function serie(t){ if (SERIE[t] !== undefined) return SERIE[t]; try { const r = await fetch(`data/series/${fname(t)}.json`); SERIE[t] = r.ok ? await r.json() : null; if (SERIE[t] && !SERIE[t].d) SERIE[t] = null; } catch(e) { SERIE[t] = null; } return SERIE[t]; }
 
 function fichaHTML(t, opts={}){
   const f = FICHAS[fid(t)];

@@ -5,6 +5,7 @@
 # =====================================================================
 
 # Referencia de "nivel habitual": percentil del último año (252 sesiones)
+panel_url: https://claude.ai/artifact/LAASkzwSpEh7uhz6ZTFrHh
 referencia_percentil: 80
 
 # --- Alertas por email (descuento vs P80, en %) -----------------------
