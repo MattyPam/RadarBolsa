@@ -49,9 +49,7 @@ jobs:
         run: |
           gh label create alerta --color D03B3B --description "Alerta de caída" 2>/dev/null || true
           gh issue create \
-            --title "RadarBolsa · alertas nuevas $(TZ=Europe/Madrid date +'%d/%m/%Y')" \
-            --body "$(cat alertas_nuevas.md)
-
-" \
+            --title "RadarBolsa · novedades $(TZ=Europe/Madrid date +'%d/%m/%Y')" \
+            --body-file alertas_nuevas.md \
             --label alerta \
             --assignee "${{ github.repository_owner }}"
