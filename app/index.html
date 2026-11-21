@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RadarBolsa</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* VOICE: herramienta de trabajo tranquila y directa, hermana de la app de finanzas del hogar.
+   IDEA: un radar que compara cada producto con su nivel habitual (percentil 80 del último año).
+   PICTURE: barras de descuento frente al nivel habitual y fichas de análisis en cajas de color.
+   COLOUR and TYPE: verde menta de marca, coral para lo que duele, ámbar para riesgo; tipografía del sistema.
+   LAYOUT: ancho completo 16:9, cabecera fija con pestañas y buscador, rejillas de tarjetas. */
+:root{
+  color-scheme:dark light;
+  --bg:light-dark(#f4f8f6,#0e1614); --panel:light-dark(#ffffff,#15201d); --panel2:light-dark(#eef4f1,#1c2a26);
+  --panel3:light-dark(#e3ece8,#223029); --line:light-dark(#dbe6e1,#2a3b35); --line2:light-dark(#e8efec,#223029);
+  --tx:light-dark(#13211d,#e8f2ee); --tx2:light-dark(#5f756e,#8fa9a1);
+  --acc:light-dark(#0f9d76,#2dd4a7); --accTx:light-dark(#ffffff,#05251c);
+  --warn:light-dark(#b97d09,#f5b945); --bad:light-dark(#d2654c,#f08a72);
+  --c3:light-dark(#2f93b8,#56b8d8); --c5:light-dark(#7b6cb8,#9d8fd0); --c6:light-dark(#c26a94,#dd8aae);
+  --sombra:0 1px 2px light-dark(rgba(18,42,36,.07),rgba(0,0,0,.28));
+  --sombraAlta:0 10px 30px light-dark(rgba(18,42,36,.16),rgba(0,0,0,.45));
+}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overflow-x:clip}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--c3)}
+header{background:var(--panel);border-bottom:1px solid var(--line);padding:12px clamp(14px,2vw,28px);position:sticky;top:0;z-index:40;box-shadow:var(--sombra)}
+.cab{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{margin:0;font-size:19px;letter-spacing:-.3px;display:flex;align-items:center;gap:8px}
+h1 small{color:var(--tx2);font-weight:400;font-size:12px}
+.radar-ico{width:22px;height:22px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{padding:8px 15px;border-radius:999px;border:1px solid transparent;background:transparent;color:var(--tx2);cursor:pointer;font-size:13.5px;transition:background .14s,color .14s}
+.tab:hover{color:var(--tx);background:var(--panel2)}
+.tab.on{background:var(--acc);color:var(--accTx);font-weight:650}
+.buscador{flex:1 1 380px;display:flex;gap:8px;margin-left:auto;max-width:720px}
+.buscador input{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:9px 16px;font-size:14.5px}
+.buscador input:focus{outline:2px solid var(--acc);outline-offset:1px}
+.btn{background:var(--panel2);border:1px solid var(--line);color:var(--tx);border-radius:999px;padding:7px 15px;cursor:pointer;font-size:13px;white-space:nowrap;transition:all .14s}
+.btn:hover{border-color:var(--acc);color:var(--acc)}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--accTx);font-weight:650}
+.btn.pri:hover{filter:brightness(1.08);color:var(--accTx)}
+.btn.sm{padding:4px 11px;font-size:12px}
+.btn.ghost{background:transparent}
+.btn.peligro:hover{border-color:var(--bad);color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.ico{padding:7px 11px}
+main{padding:20px clamp(14px,2vw,28px) 60px}
+.seccion{display:none}.seccion.on{display:block}
+h2.sep{font-size:12px;text-transform:uppercase;letter-spacing:1.1px;color:var(--tx2);margin:26px 0 12px;display:flex;align-items:center;gap:10px}
+h2.sep:after{content:'';flex:1;height:1px;background:var(--line)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:var(--sombra)}
+.card h3{margin:0 0 10px;font-size:14.5px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.hint{font-size:12px;color:var(--tx2);font-weight:400}
+.g{display:grid;gap:14px}
+.g-kpi{grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr))}
+.g-2{grid-template-columns:minmax(0,1.05fr) minmax(0,1.6fr)}
+.g-tarj{grid-template-columns:repeat(auto-fill,minmax(min(100%,470px),1fr))}
+@media(max-width:1100px){.g-2{grid-template-columns:1fr}}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;box-shadow:var(--sombra);cursor:pointer;transition:border-color .14s}
+.kpi:hover{border-color:var(--acc)}
+.kpi .l{font-size:12px;color:var(--tx2);display:flex;justify-content:space-between;gap:6px}
+.kpi .v{font-size:26px;font-weight:700;letter-spacing:-.6px;margin-top:2px}
+.kpi .s{font-size:12px;color:var(--tx2)}
+.kpi svg{width:100%;height:36px;display:block;margin-top:6px}
+.pos{color:var(--acc)}.neg{color:var(--bad)}.mut{color:var(--tx2)}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:3px 9px;border-radius:999px;background:var(--panel2);white-space:nowrap;font-weight:600}
+.badge .dot{width:8px;height:8px;border-radius:50%}
+.b-verde{color:var(--acc);background:color-mix(in srgb,var(--acc) 13%,transparent)}
+.b-ambar{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent)}
+.b-rojo{color:var(--bad);background:color-mix(in srgb,var(--bad) 13%,transparent)}
+.b-gris,.b-neutro{color:var(--tx2)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);font-size:12.5px;cursor:pointer;margin:0 6px 6px 0}
+.chip:hover{border-color:var(--acc)}
+.chip.alerta{border-color:color-mix(in srgb,var(--bad) 45%,transparent);background:color-mix(in srgb,var(--bad) 8%,var(--panel))}
+.chip.nueva:after{content:'nueva';font-size:10px;background:var(--bad);color:#fff;border-radius:6px;padding:1px 5px}
+/* barras divergentes */
+.barras{display:grid;gap:7px}
+.barra{display:grid;grid-template-columns:150px 1fr 64px 120px;align-items:center;gap:10px;cursor:pointer;padding:3px 4px;border-radius:8px}
+.barra:hover{background:var(--panel2)}
+.barra .pista{position:relative;height:16px}
+.barra .cero{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--tx2);opacity:.5}
+.barra .r{position:absolute;top:2px;height:12px;border-radius:4px}
+@media(max-width:600px){.barra{grid-template-columns:100px 1fr 54px}.barra .bd{display:none}}
+.seg{display:inline-flex;gap:4px;flex-wrap:wrap}
+.seg button{border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:4px 11px;font-size:12px;cursor:pointer;color:var(--tx2)}
+.seg button.on{border-color:var(--acc);color:var(--acc);background:color-mix(in srgb,var(--acc) 12%,transparent);font-weight:650}
+/* tarjetas con ficha */
+.tarj{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sombra);display:flex;flex-direction:column;overflow:hidden}
+.tarj .cabt{padding:14px 16px 10px;display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:start}
+.tarj .nom{font-size:16px;font-weight:700;letter-spacing:-.2px;cursor:pointer}
+.tarj .nom:hover{color:var(--acc)}
+.tarj .meta{font-size:12px;color:var(--tx2)}
+.tarj .big{font-size:24px;font-weight:750;text-align:right;letter-spacing:-.5px;line-height:1.1}
+.tarj .big small{display:block;font-size:11px;font-weight:500;color:var(--tx2);letter-spacing:0}
+.stats{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 10px}
+.st{background:var(--panel2);border-radius:9px;padding:5px 9px;font-size:12px}
+.st b{font-weight:700}
+.ficha{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px 12px}
+.caja{border-radius:11px;padding:9px 11px;font-size:13px;line-height:1.45;border:1px solid transparent}
+.caja .t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px;display:flex;align-items:center;gap:6px}
+.caja .t svg{width:13px;height:13px}
+.caja p{margin:0;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.ficha.abierta .caja p{-webkit-line-clamp:unset;display:block}
+.k-neg{background:color-mix(in srgb,var(--c3) 10%,transparent)}.k-neg .t{color:var(--c3)}
+.k-cae{background:color-mix(in srgb,var(--bad) 10%,transparent)}.k-cae .t{color:var(--bad)}
+.k-rie{background:color-mix(in srgb,var(--warn) 11%,transparent)}.k-rie .t{color:var(--warn)}
+.k-opo{background:color-mix(in srgb,var(--acc) 11%,transparent)}.k-opo .t{color:var(--acc)}
+.k-inv{background:color-mix(in srgb,var(--c5) 11%,transparent)}.k-inv .t{color:var(--c5)}
+.k-dia{background:var(--panel2);border-color:var(--line)}.k-dia .t{color:var(--c6)}
+.k-con{grid-column:1/-1;background:color-mix(in srgb,var(--acc) 7%,var(--panel));border-color:color-mix(in srgb,var(--acc) 45%,transparent)}.k-con .t{color:var(--acc)}
+.k-con p{font-weight:550}
+.aviso-ex{grid-column:1/-1;background:color-mix(in srgb,var(--warn) 12%,transparent);color:var(--warn);border-radius:10px;padding:7px 10px;font-size:12.5px}
+.sinficha{margin:0 16px 12px;border:1px dashed var(--line);border-radius:12px;padding:12px;font-size:13px;color:var(--tx2);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.pie{margin-top:auto;border-top:1px solid var(--line2);padding:9px 12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pie .fecha{margin-left:auto;font-size:11.5px;color:var(--tx2)}
+.ver-mas{font-size:12px;color:var(--c3);cursor:pointer;background:none;border:0;padding:0 16px 10px;text-align:left}
+@media(max-width:560px){.ficha{grid-template-columns:1fr}}
+/* tablas */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--tx2);font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--line2);vertical-align:middle}
+td.n,th.n{text-align:right}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--panel2)}
+.vacio{padding:24px;text-align:center;color:var(--tx2)}
+/* panel lateral y detalle */
+.velo{position:fixed;inset:0;background:rgba(5,15,12,.5);z-index:60;display:none}
+.velo.on{display:block}
+.lateral{position:fixed;top:0;right:0;bottom:0;width:min(600px,100vw);background:var(--bg);border-left:1px solid var(--line);z-index:61;transform:translateX(100%);transition:transform .22s;display:flex;flex-direction:column;box-shadow:var(--sombraAlta)}
+.lateral.on{transform:none}
+.lateral .lc{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;background:var(--panel)}
+.lateral .lc h3{margin:0;font-size:15px;flex:1}
+.lateral .lb{padding:16px 18px;overflow-y:auto;flex:1}
+.detalle{position:fixed;inset:16px;z-index:62;background:var(--bg);border:1px solid var(--line);border-radius:18px;display:none;flex-direction:column;box-shadow:var(--sombraAlta);overflow:hidden;max-width:1500px;margin:0 auto}
+.detalle.on{display:flex}
+.detalle .dc{padding:14px 20px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.detalle .db{padding:16px 20px;overflow-y:auto;flex:1}
+.cerrar{background:none;border:0;font-size:24px;cursor:pointer;color:var(--tx2);line-height:1;padding:4px 8px}
+.cerrar:hover{color:var(--tx)}
+.fig{position:relative;height:340px}
+.rango{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.rango input[type=date]{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12.5px}
+.hist td{text-align:center;font-size:12.5px}
+.hist td.cur{outline:2px solid var(--acc);outline-offset:-2px;border-radius:6px}
+/* formularios */
+label.f{display:block;font-size:12px;color:var(--tx2);margin:10px 0 4px}
+.inp{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:15px}
+textarea.inp{min-height:70px;resize:vertical}
+.fila{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* chat */
+.msg{margin-bottom:12px;padding:10px 13px;border-radius:12px;font-size:14px;line-height:1.55}
+.msg.u{background:color-mix(in srgb,var(--acc) 12%,transparent);margin-left:40px}
+.msg.a{background:var(--panel);border:1px solid var(--line)}
+.msg.a p{margin:0 0 8px}.msg.a ul{margin:4px 0 8px;padding-left:20px}
+.estado{font-size:12px;color:var(--tx2);font-style:italic}
+.progreso{display:grid;gap:6px;margin-top:10px}
+.progreso div{font-size:12.5px;display:flex;gap:8px;align-items:center}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 18px;border-radius:999px;z-index:80;font-size:13px;display:none}
+.toast.on{display:block}
+.meter{height:10px;border-radius:999px;background:var(--panel3);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--acc);border-radius:999px}
+.senal{display:inline-flex;gap:5px;align-items:center;font-size:12px;font-weight:650;padding:3px 9px;border-radius:999px}
+.s-ok{color:var(--acc);background:color-mix(in srgb,var(--acc) 12%,transparent)}
+.s-warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent)}
+.s-bad{color:var(--bad);background:color-mix(in srgb,var(--bad) 13%,transparent)}
+.s-info{color:var(--c3);background:color-mix(in srgb,var(--c3) 12%,transparent)}
+.banner{border-radius:14px;padding:12px 16px;margin-bottom:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;border:1px solid}
+.banner.info{background:color-mix(in srgb,var(--c3) 9%,var(--panel));border-color:color-mix(in srgb,var(--c3) 40%,transparent)}
+.banner.warn{background:color-mix(in srgb,var(--warn) 9%,var(--panel));border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
+.banner .txt{flex:1 1 300px;font-size:13.5px}
+.criterios{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.criterios span{font-size:12px;background:var(--panel2);border-radius:8px;padding:4px 9px;color:var(--tx2)}
+.filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.filtros select{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:13px}
+.glos{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.glos .caja p{-webkit-line-clamp:unset;display:block}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.lateral{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="cab">
+    <h1><svg class="radar-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--acc)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l6-6"/><circle cx="16.5" cy="8.5" r="1.3" fill="currentColor"/></svg>RadarBolsa <small id="upd">cargando…</small></h1>
+    <nav class="tabs" id="tabs">
+      <button class="tab on" data-t="mercado">Mercado</button>
+      <button class="tab" data-t="oportunidades">Oportunidades</button>
+      <button class="tab" data-t="cartera">Mi cartera</button>
+    </nav>
+    <form class="buscador" id="fBusca">
+      <input id="qBusca" placeholder="Pregunta lo que quieras: ¿qué sector tiene mejor histórico tras esta caída?" autocomplete="off" aria-label="Pregunta a RadarBolsa">
+      <button class="btn pri" type="submit">Preguntar</button>
+    </form>
+    <button class="btn ico" id="bAjustes" title="Presupuesto y tickets" aria-label="Ajustes">⚙</button>
+    <button class="btn ico" id="bAyuda" title="Cómo leer la app" aria-label="Ayuda">?</button>
+  </div>
+</header>
+
+<main>
+  <section class="seccion on" id="s-mercado"></section>
+  <section class="seccion" id="s-oportunidades"></section>
+  <section class="seccion" id="s-cartera"></section>
+</main>
+
+<div class="velo" id="velo"></div>
+<aside class="lateral" id="lateral" aria-live="polite"><div class="lc"><h3 id="latT"></h3><button class="cerrar" data-cerrar aria-label="Cerrar">×</button></div><div class="lb" id="latB"></div></aside>
+<div class="detalle" id="detalle" role="dialog"><div class="dc" id="detC"></div><div class="db" id="detB"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+{
+// ============================ utilidades ============================
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const _cp = document.createElement('span');
+const css = v => { if (!_cp.isConnected) { _cp.style.display='none'; document.body.appendChild(_cp); } _cp.style.color = `var(${v})`; return getComputedStyle(_cp).color; };
+const fid = t => String(t).replace(/[^A-Za-z0-9_\-.~:@+]/g, '_');
+const fname = t => String(t).replace(/[^A-Za-z0-9]/g, '_');
+const hoyISO = () => new Date().toISOString().slice(0,10);
+const sumaDias = (iso, d) => { const x = new Date(iso); x.setDate(x.getDate()+d); return x.toISOString().slice(0,10); };
+const diasEntre = (a, b) => Math.round((new Date(b) - new Date(a)) / 864e5);
+const num = (v, d=2) => v==null || isNaN(v) ? '–' : Number(v).toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d});
+const eur = v => v==null || isNaN(v) ? '–' : Number(v).toLocaleString('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0});
+const pct = (v, d=1, flecha=true) => {
+  if (v==null || isNaN(v)) return '<span class="mut">–</span>';
+  const c = v>0 ? 'pos' : v<0 ? 'neg' : '';
+  return `<span class="num ${c}">${flecha ? (v>0?'▲ ':v<0?'▼ ':'') : ''}${v>0?'+':''}${num(v,d)}%</span>`;
+};
+const toast = t => { const e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(e._t); e._t = setTimeout(() => e.classList.remove('on'), 3200); };
+const CONS = {strong_buy:'compra fuerte', buy:'comprar', hold:'mantener', underperform:'por debajo del mercado', sell:'vender', none:'—'};
+const NIV = {verde:'Histórico favorable', ambar:'Histórico mixto', rojo:'Histórico desfavorable', gris:'Pocos precedentes', neutro:'En su nivel habitual'};
+const badge = l => l ? `<span class="badge b-${l.nivel}" title="${esc(l.texto)}"><span class="dot" style="background:currentColor"></span>${NIV[l.nivel]||''}</span>` : '';
+const ICO = {
+  neg:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="5" width="12" height="9" rx="1.5"/><path d="M6 5V3h4v2"/></svg>',
+  cae:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4l5 5 3-3 4 5"/><path d="M14 8v3h-3"/></svg>',
+  rie:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 2l6.5 11.5h-13z"/><path d="M8 7v3M8 12v.5"/></svg>',
+  opo:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12l4-4 3 3 5-6"/><path d="M10 5h4v4"/></svg>',
+  inv:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6"/><path d="M4 12l8-8"/></svg>',
+  dia:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3h10v7H8l-3 3v-3H3z"/></svg>',
+  con:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8.5l3 3 7-7"/></svg>'
+};
+
+// ============================ estado ============================
+let D = null, U = [], UX = {}, IDX = {}, FICHAS = {}, EXCL = {}, CART = {}, VERED = {}, AJ = null;
+let db = null, sample = null, mcp = null;
+const AJ_DEF = {personas:[{nombre:'Yo', presupuesto:40000},{nombre:'Pam', presupuesto:35000}], ticket_min:1000, ticket_max:2500, cuenta_pct:3};
+const ajustes = () => ({...AJ_DEF, ...(AJ||{})});
+let tab = 'mercado', metricaSect = 'desc', charts = [], filtros = {sector:'', region:'', nivel:'', orden:'ventaja', ocultarConflicto:true};
+try { tab = localStorage.getItem('rb_tab') || 'mercado'; } catch(e) {}
+
+const item = t => IDX[t] || null;
+function nombreDe(t){ const i = item(t); if (i) return i.nombre; const u = UX[t]; return u ? u[1] : t; }
+function descDe(t){ const i = item(t); if (i) return i.desc; const u = UX[t]; return u ? u[6] : null; }
+function precioDe(t){ const i = item(t); if (i) return i.precio; const u = UX[t]; return u ? u[5] : null; }
+function monedaDe(t){ const i = item(t); if (i) return i.moneda; const u = UX[t]; return u ? u[4] : ''; }
+function nivelDe(t){ const i = item(t); if (i && i.lectura) return i.lectura.nivel; const u = UX[t]; return u ? u[10] : null; }
+function esETF(i){ return i && (i.tipo==='indice' || i.tipo==='sector' || i.tipo==='ucits'); }
+
+// ============================ carga ============================
+async function cargar(){
+  try {
+    const [r1, r2] = await Promise.all([fetch('data/resumen.json'), fetch('data/universo.json')]);
+    D = await r1.json(); U = r2.ok ? await r2.json() : [];
+  } catch(e) { $('#s-mercado').innerHTML = '<div class="card vacio">Todavía no hay datos. Se cargan cada día laborable hacia las 11:50.</div>'; $('#upd').textContent=''; return; }
+  U.forEach(u => UX[u[0]] = u);
+  const m = D.mercado;
+  [...m.indices, ...m.contexto, ...m.sectores, ...D.oportunidades, ...(D.cartera_extra||[])].forEach(i => IDX[i.ticker] = i);
+  m.sectores.forEach(s => { if (s.ucits) IDX[s.ucits.ticker] = {...s.ucits, tipo:'ucits', sector:s.nombre, lectura:null, padre:s.ticker}; });
+  $('#upd').textContent = `datos ${D.actualizado.slice(8,10)}/${D.actualizado.slice(5,7)} ${D.actualizado.slice(11)} · ${D.n_universo} empresas revisadas`;
+  pintar();
+  conectar();
+}
+
+async function conectar(){
+  const c = window.claude;
+  if (!c || !c.use) { pintar(); return; }
+  c.use('sample').then(s => { sample = s; pintar(); });
+  c.use('mcp').then(m => { mcp = m; });
+  db = await c.use('db');
+  if (!db) { pintar(); return; }
+  const sub = (col, dest, cb) => db.collection(col).onSnapshot(snap => {
+    for (const k in dest) delete dest[k];
+    snap.docs.forEach(d => dest[d.id] = d.data());
+    cb && cb(); pintar();
+  }, e => console.warn(col, e));
+  sub('fichas', FICHAS); sub('exclusiones', EXCL); sub('cartera', CART); sub('veredictos', VERED);
+  db.doc('ajustes/general').onSnapshot(d => { AJ = d.exists ? d.data() : null; pintar(); }, () => {});
+}
+
+// ============================ navegación ============================
+document.querySelectorAll('#tabs .tab').forEach(b => b.onclick = () => irA(b.dataset.t));
+function irA(t){
+  tab = t; try { localStorage.setItem('rb_tab', t); } catch(e) {}
+  document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('on', b.dataset.t===t));
+  document.querySelectorAll('.seccion').forEach(s => s.classList.toggle('on', s.id==='s-'+t));
+  pintar();
+}
+let pintando = false;
+function pintar(){
+  if (!D || pintando) return; pintando = true;
+  requestAnimationFrame(() => {
+    pintando = false;
+    document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('on', b.dataset.t===tab));
+    document.querySelectorAll('.seccion').forEach(s => s.classList.toggle('on', s.id==='s-'+tab));
+    if (tab==='mercado') pintarMercado();
+    if (tab==='oportunidades') pintarOportunidades();
+    if (tab==='cartera') pintarCartera();
+  });
+}
+document.addEventListener('click', ev => {
+  const a = ev.target.closest('[data-det]'); if (a) { ev.preventDefault(); abrirDetalle(a.dataset.det); return; }
+  const an = ev.target.closest('[data-analizar]'); if (an) { analizarUno(an.dataset.analizar, an); return; }
+  const ex = ev.target.closest('[data-excluir]'); if (ex) { formExcluir(ex.dataset.excluir); return; }
+  const ad = ev.target.closest('[data-anadir]'); if (ad) { formPosicion(null, ad.dataset.anadir); return; }
+  const vm = ev.target.closest('[data-vermas]'); if (vm) { const f = vm.previousElementSibling; f.classList.toggle('abierta'); vm.textContent = f.classList.contains('abierta') ? 'Ver menos' : 'Leer completo'; return; }
+  if (ev.target.closest('[data-cerrar]') || ev.target.id==='velo') cerrarTodo();
+});
+document.addEventListener('keydown', e => { if (e.key==='Escape') cerrarTodo(); });
+function cerrarTodo(){ $('#lateral').classList.remove('on'); $('#detalle').classList.remove('on'); $('#velo').classList.remove('on'); if (detChart) { detChart.destroy(); detChart=null; } }
+function lateral(titulo, html){ $('#latT').textContent = titulo; $('#latB').innerHTML = html; $('#lateral').classList.add('on'); $('#velo').classList.add('on'); }
+
+// ============================ piezas comunes ============================
+function sparkline(s, color){
+  if (!s || !s.d) return '';
+  const p = s.d.slice(-63).map(x => x[1]).filter(x => x!=null); if (p.length<2) return '';
+  const mn = Math.min(...p), mx = Math.max(...p), W = 200, H = 36;
+  const pts = p.map((v,i) => `${(i/(p.length-1)*W).toFixed(1)},${(H-2-(v-mn)/(mx-mn||1)*(H-4)).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" vector-effect="non-scaling-stroke"/></svg>`;
+}
+const SERIE = {};
+async function serie(t){ if (SERIE[t] !== undefined) return SERIE[t]; try { const r = await fetch(`data/series/${fname(t)}.json`); SERIE[t] = r.ok ? await r.json() : null; } catch(e) { SERIE[t] = null; } return SERIE[t]; }
+
+function fichaHTML(t, opts={}){
+  const f = FICHAS[fid(t)];
+  if (!f) {
+    if (!db || !sample) return `<div class="sinficha"><span>Sin análisis todavía.</span></div>`;
+    return `<div class="sinficha"><span>Sin análisis todavía: pide a Claude el porqué de esta caída.</span><button class="btn sm pri" data-analizar="${esc(t)}">Analizar con Claude</button></div>`;
+  }
+  const caja = (k, tit, txt) => txt ? `<div class="caja k-${k}"><div class="t">${ICO[k]}${tit}</div><p>${esc(txt)}</p></div>` : '';
+  const ex = f.conflicto_exclusion ? `<div class="aviso-ex">⚠ Choca con una de tus exclusiones: ${esc(f.conflicto_exclusion)}</div>` : '';
+  const html = `<div class="ficha${opts.abierta?' abierta':''}">${ex}
+    ${caja('neg', t==='_mercado'?'Qué está pasando':'Qué es y de dónde gana dinero', f.negocio)}
+    ${caja('cae', 'Por qué ha caído', f.por_que_cae)}
+    ${caja('rie', 'Riesgo real', f.riesgo)}
+    ${caja('opo', 'Oportunidad real', f.oportunidad)}
+    ${caja('inv', 'Qué invalidaría la tesis', f.invalida)}
+    ${caja('dia', 'Abogado del diablo', f.abogado || f.abogado_del_diablo)}
+    ${caja('con', 'Conclusión', f.conclusion)}</div>`;
+  const fuentes = (f.fuentes||[]).filter(u => /^https?:\/\//.test(u)).slice(0,4).map(u => { let h=u; try{h=new URL(u).hostname.replace('www.','');}catch(e){} return `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(h)}</a>`; }).join(' · ');
+  return html + (opts.abierta ? '' : '<button class="ver-mas" data-vermas>Leer completo</button>') + (fuentes ? `<div class="hint" style="padding:0 16px 10px">Fuentes: ${fuentes}</div>` : '');
+}
+const fechaFicha = t => { const f = FICHAS[fid(t)]; return f ? `análisis ${f.fecha.slice(8,10)}/${f.fecha.slice(5,7)}` : ''; };
+
+function ticket(i){
+  const a = ajustes(), l = i.lectura || {}, mid = Math.round((a.ticket_min + a.ticket_max)/2/250)*250;
+  if (esETF(i)) return l.nivel==='verde' ? a.ticket_max : mid;
+  if (l.nivel==='verde' && (i.volatilidad||99) < 35) return mid;
+  return a.ticket_min;
+}
+function excluido(t){
+  const e = EXCL[fid(t)]; if (e && e.estado!=='reactivada') return e;
+  const i = item(t), sec = i ? i.sector : (UX[t]||[])[2];
+  return Object.values(EXCL).find(x => x.tipo==='sector_acciones' && x.estado!=='reactivada' && x.valor===sec && i && i.tipo==='accion') || null;
+}
+
+// ============================ MERCADO ============================
+async function pintarMercado(){
+  const m = D.mercado, el = $('#s-mercado');
+  const ctx = FICHAS['_mercado'];
+  let h = `<div class="g g-kpi">`;
+  for (const i of m.indices) {
+    h += `<div class="kpi" data-det="${esc(i.ticker)}"><div class="l"><span>${esc(i.nombre)}</span>${i.lectura && i.lectura.nivel!=='neutro' ? `<span class="badge b-${i.lectura.nivel}" style="padding:1px 7px"><span class="dot" style="background:currentColor"></span></span>`:''}</div>
+      <div class="v ${i.desc<0?'neg':''}">${i.desc>0?'+':''}${num(i.desc,1)}%</div>
+      <div class="s">vs nivel habitual · 5 días ${pct(i.var_5d)}</div><div id="sp-${fname(i.ticker)}"></div></div>`;
+  }
+  h += `</div>`;
+  // alertas + contexto | barras sectores
+  const al = D.alertas.filter(a => a.tipo!=='accion');
+  h += `<div class="g g-2" style="margin-top:14px">
+    <div class="card"><h3>Alertas de hoy <span class="hint">${al.length ? al.length+' activas' : 'ninguna'}</span></h3>
+      <div>${al.map(a => `<span class="chip alerta ${D.alertas_nuevas.includes(a.clave)?'nueva':''}" data-det="${esc(a.ticker)}">${esc(a.texto)}</span>`).join('') || '<span class="mut">Ningún índice ni sector supera los umbrales.</span>'}</div>
+      <h3 style="margin-top:14px">Contexto</h3>
+      <div class="g g-kpi" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px">${m.contexto.map(c => {
+        let nota = ''; if (c.ticker==='^VIX') nota = c.precio>=35?'pánico':c.precio>=25?'nervioso':c.precio>=15?'normal':'tranquilo';
+        return `<div class="kpi" data-det="${esc(c.ticker)}" style="padding:10px 12px"><div class="l">${esc(c.nombre)}</div><div class="v" style="font-size:19px">${num(c.precio, c.precio<10?4:1)}</div><div class="s">${nota?`<b class="${c.precio>=25?'neg':''}">${nota}</b> · `:''}1 mes ${pct(c.var_1m,1,false)}</div></div>`; }).join('')}</div>
+    </div>
+    <div class="card"><h3>Sectores frente a su nivel habitual <span class="seg" id="segS">${[['desc','vs nivel habitual'],['var_5d','5 días'],['var_1m','1 mes'],['var_1a','1 año']].map(([k,l]) => `<button data-m="${k}" class="${k===metricaSect?'on':''}">${l}</button>`).join('')}</span></h3>
+      <div class="barras">${barrasSectores()}</div>
+      <p class="hint" style="margin:10px 0 0">Nivel habitual = precio que el sector ha superado solo el 20% de los días del último año (percentil 80). Pulsa un sector para ver su gráfico.</p></div>
+  </div>`;
+  // lectura del mercado
+  h += `<h2 class="sep">Lectura del mercado</h2>`;
+  h += `<div class="tarj">${ctx ? fichaHTML('_mercado', {abierta:true}) : `<div class="sinficha" style="margin:14px 16px"><span>Aún no hay lectura del mercado.</span>${db&&sample?'<button class="btn sm pri" data-analizar="_mercado">Pedir lectura a Claude</button>':''}</div>`}
+    <div class="pie">${db&&sample?`<button class="btn sm" data-analizar="_mercado">${ctx?'Actualizar lectura':'Analizar'}</button>`:''}<span class="fecha">${fechaFicha('_mercado')}</span></div></div>`;
+  // sectores
+  const secs = [...m.sectores].sort((a,b) => (a.desc??0)-(b.desc??0));
+  h += `<h2 class="sep">Sectores · qué son y por qué se mueven</h2><div class="g g-tarj">`;
+  for (const s of secs) {
+    const ex = excluido(s.ticker);
+    if (ex) continue;
+    const u = s.ucits, l = s.lectura || {};
+    h += `<article class="tarj"><div class="cabt"><div><div class="nom" data-det="${esc(s.ticker)}">${esc(s.nombre)}</div>
+        <div class="meta">${u ? `Comprable: ${esc(u.nombre)} · ${esc(u.ticker)}${u.isin?' · '+esc(u.isin):''}` : 'Sin ETF UCITS en el panel'}</div></div>
+        <div class="big ${s.desc<0?'neg':''}">${s.desc>0?'+':''}${num(s.desc,1)}%<small>vs nivel habitual</small></div></div>
+      <div class="stats">${badge(l)}${l.pct!=null?`<span class="st">sube a 6 meses <b>${l.pct}%</b> vs ${l.base}% cualquier día · n=${l.n}</span><span class="st">mediana <b>${l.med>0?'+':''}${l.med}%</b> · malo <b>${l.malo}%</b></span>`:''}<span class="st">1 mes ${pct(s.var_1m)}</span>${l.nivel!=='neutro'?`<span class="st">ticket orientativo <b>${eur(ticket(s))}</b></span>`:''}</div>
+      ${fichaHTML(s.ticker)}
+      <div class="pie"><button class="btn sm" data-det="${esc(s.ticker)}">Gráfico y estadística</button>${u?`<button class="btn sm" data-anadir="${esc(u.ticker)}">Añadir a cartera</button>`:''}${db&&sample&&FICHAS[fid(s.ticker)]?`<button class="btn sm ghost" data-analizar="${esc(s.ticker)}">Actualizar análisis</button>`:''}<button class="btn sm ghost peligro" data-excluir="${esc(s.ticker)}">No me interesa</button><span class="fecha">${fechaFicha(s.ticker)}</span></div></article>`;
+  }
+  h += `</div>`;
+  const exS = m.sectores.filter(s => excluido(s.ticker));
+  if (exS.length) h += `<p class="hint" style="margin-top:10px">Sectores excluidos: ${exS.map(s => esc(s.nombre)).join(', ')} (gestiónalos en Oportunidades → Exclusiones).</p>`;
+  el.innerHTML = h;
+  document.querySelectorAll('#segS button').forEach(b => b.onclick = () => { metricaSect = b.dataset.m; pintar(); });
+  for (const i of m.indices) serie(i.ticker).then(s => { const d = $('#sp-'+fname(i.ticker)); if (d) d.innerHTML = sparkline(s, i.var_1m<0?css('--bad'):css('--acc')); });
+}
+function barrasSectores(){
+  const S = [...D.mercado.sectores].sort((a,b) => (a[metricaSect]??0)-(b[metricaSect]??0));
+  const mx = Math.max(5, ...S.map(s => Math.abs(s[metricaSect]??0)));
+  return S.map(s => { const v = s[metricaSect]??0, w = Math.abs(v)/mx*50;
+    return `<div class="barra" data-det="${esc(s.ticker)}"><span>${esc(s.nombre)}</span><div class="pista"><div class="cero"></div><div class="r" style="${v<0?`right:50%;width:${w}%;background:var(--bad)`:`left:50%;width:${w}%;background:var(--acc)`}"></div></div><span class="num" style="text-align:right">${v>0?'+':''}${num(v,1)}%</span><span class="bd">${badge(s.lectura)}</span></div>`; }).join('');
+}
+
+// ============================ OPORTUNIDADES ============================
+function pintarOportunidades(){
+  const el = $('#s-oportunidades'), met = D.metodo, a = ajustes();
+  let ops = D.oportunidades.filter(o => o.radar==='principal');
+  const exList = Object.entries(EXCL).filter(([,e]) => e.estado!=='reactivada');
+  // propuestas de revisión de exclusiones
+  const props = exList.filter(([,e]) => propuestaRevision(e));
+  let h = '';
+  if (!db) h += `<div class="banner info"><div class="txt">Para guardar análisis, exclusiones y tu cartera, abre la app desde claude.ai.</div></div>`;
+  for (const [id, e] of props) {
+    const d = descDe(e.valor);
+    h += `<div class="banner warn"><div class="txt"><b>${esc(e.nombre)}</b> sigue excluida (${esc(e.motivo||'sin motivo')}). ${e.tipo==='accion' && d!=null ? `Desde que la excluiste ha pasado de ${num(e.desc_al_excluir,1)}% a <b>${num(d,1)}%</b> frente a su nivel habitual y su histórico es ${NIV[nivelDe(e.valor)]?.toLowerCase()||'—'}.` : 'Ha llegado la fecha de revisión que pusiste.'} ¿La vuelvo a estudiar?</div>
+      ${e.tipo==='accion'?`<button class="btn sm pri" data-reactivar="${id}" data-y-analizar="1">Reactivar y analizar</button>`:`<button class="btn sm pri" data-reactivar="${id}">Reactivar</button>`}<button class="btn sm" data-posponer="${id}">Mantener excluida 2 meses más</button></div>`;
+  }
+  const secs = [...new Set(ops.map(o => o.sector))].sort();
+  h += `<div class="card" style="margin-bottom:14px"><div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+    <div><h3 style="margin:0">Empresas que destacan hoy <span class="hint">${D.n_elegibles} de ${D.n_universo} revisadas cumplen los criterios · se muestran las ${ops.length} mejores, máximo ${met.radar.max_por_sector} por sector</span></h3>
+    <div class="criterios"><span>al menos ${Math.abs(met.radar.accion_min_descuento)}% bajo su nivel habitual</span><span>histórico a 6 meses favorable o mixto</span><span>≥ ${met.min_casos} precedentes</span><span>ordenadas por ventaja frente a comprar cualquier día</span></div></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${sample&&db?`<button class="btn pri" id="bRelanzar">Relanzar análisis</button>`:''}<span class="hint" id="relEstado">${ultimoAnalisis()}</span></div></div>
+    <div class="filtros" style="margin-top:12px">
+      <select id="fSec"><option value="">Todos los sectores</option>${secs.map(s => `<option ${s===filtros.sector?'selected':''}>${esc(s)}</option>`).join('')}</select>
+      <select id="fReg"><option value="">EE. UU. y Europa</option><option ${filtros.region==='EE. UU.'?'selected':''}>EE. UU.</option><option ${filtros.region==='Europa'?'selected':''}>Europa</option></select>
+      <select id="fNiv"><option value="">Histórico favorable y mixto</option><option value="verde" ${filtros.nivel==='verde'?'selected':''}>Solo favorable</option></select>
+      <select id="fOrd"><option value="ventaja" ${filtros.orden==='ventaja'?'selected':''}>Ordenar: ventaja histórica</option><option value="desc" ${filtros.orden==='desc'?'selected':''}>Ordenar: mayor descuento</option><option value="med" ${filtros.orden==='med'?'selected':''}>Ordenar: mediana a 6 meses</option></select>
+      <label class="hint"><input type="checkbox" id="fConf" ${filtros.ocultarConflicto?'checked':''}> ocultar las que chocan con mis exclusiones</label>
+    </div><div class="progreso" id="relProg"></div></div>`;
+  ops = ops.filter(o => !excluido(o.ticker) && (!filtros.sector || o.sector===filtros.sector) && (!filtros.region || o.region===filtros.region) && (!filtros.nivel || o.lectura.nivel===filtros.nivel));
+  if (filtros.ocultarConflicto) ops = ops.filter(o => !(FICHAS[fid(o.ticker)]||{}).conflicto_exclusion);
+  const k = filtros.orden==='desc' ? o => o.desc : filtros.orden==='med' ? o => -(o.lectura.med||0) : o => -(o.lectura.ventaja||0);
+  ops.sort((x,y) => k(x)-k(y));
+  h += `<div class="g g-tarj">${ops.map(tarjetaAccion).join('') || '<div class="card vacio">Ninguna empresa cumple los filtros.</div>'}</div>`;
+  // reserva
+  const res = D.oportunidades.filter(o => o.radar==='reserva' && !excluido(o.ticker));
+  if (res.length) h += `<h2 class="sep">También cumplen los criterios</h2><div class="card tw"><table><thead><tr><th>Empresa</th><th>Sector</th><th class="n">vs nivel habitual</th><th class="n">1 mes</th><th>Histórico 6 meses</th><th></th></tr></thead><tbody>${res.map(o => `<tr class="click" data-det="${esc(o.ticker)}"><td><b>${esc(o.nombre)}</b> <span class="mut">${esc(o.ticker)}</span></td><td>${esc(o.sector)}</td><td class="n">${pct(o.desc)}</td><td class="n">${pct(o.var_1m)}</td><td>${badge(o.lectura)} <span class="hint">${o.lectura.pct}% vs ${o.lectura.base}%</span></td><td><button class="btn sm ghost peligro" data-excluir="${esc(o.ticker)}">No me interesa</button></td></tr>`).join('')}</tbody></table></div>`;
+  // exclusiones
+  h += `<h2 class="sep">Mis exclusiones</h2><div class="card tw">${exList.length ? `<table><thead><tr><th>Qué</th><th>Motivo</th><th>Desde</th><th class="n">Al excluir</th><th class="n">Hoy</th><th>Revisar el</th><th></th></tr></thead><tbody>${exList.map(([id,e]) => { const d = e.tipo==='accion' || e.tipo==='sector' ? descDe(e.valor) : null; return `<tr><td><b>${esc(e.nombre)}</b> <span class="hint">${e.tipo==='sector_acciones'?'todas las acciones del sector':e.tipo==='sector'?'sector (ETF)':'empresa'}</span></td><td>${esc(e.motivo||'—')}</td><td class="num">${esc(e.fecha)}</td><td class="n">${e.desc_al_excluir!=null?pct(e.desc_al_excluir,1,false):'–'}</td><td class="n">${d!=null?pct(d,1,false):'–'}</td><td class="num">${esc(e.revisar||'—')}</td><td><button class="btn sm" data-reactivar="${id}">Reactivar</button></td></tr>`; }).join('')}</tbody></table>` : '<div class="vacio">No has excluido nada. Usa "No me interesa" en cualquier tarjeta.</div>'}</div>`;
+  el.innerHTML = h;
+  const bind = (id, k, chk) => { const e = $(id); if (e) e.onchange = () => { filtros[k] = chk ? e.checked : e.value; pintar(); }; };
+  bind('#fSec','sector'); bind('#fReg','region'); bind('#fNiv','nivel'); bind('#fOrd','orden'); bind('#fConf','ocultarConflicto',true);
+  const br = $('#bRelanzar'); if (br) br.onclick = relanzar;
+  el.querySelectorAll('[data-reactivar]').forEach(b => b.onclick = () => reactivar(b.dataset.reactivar, b.dataset.yAnalizar));
+  el.querySelectorAll('[data-posponer]').forEach(b => b.onclick = () => posponer(b.dataset.posponer));
+}
+function tarjetaAccion(o){
+  const l = o.lectura, f = o.fund || {};
+  const fund = [f.per_futuro!=null?`PER futuro <b>${num(f.per_futuro,1)}</b>`:'', f.crec_ventas!=null?`ventas <b>${f.crec_ventas>0?'+':''}${num(f.crec_ventas,0)}%</b>`:'', f.margen!=null?`margen <b>${num(f.margen,0)}%</b>`:'', f.consenso?`analistas: <b>${esc(CONS[f.consenso]||f.consenso)}</b>`:''].filter(Boolean).map(x => `<span class="st">${x}</span>`).join('');
+  return `<article class="tarj"><div class="cabt"><div><div class="nom" data-det="${esc(o.ticker)}">${esc(o.nombre)}</div><div class="meta">${esc(o.ticker)} · ${esc(o.sector||'')} · ${esc(o.region)} · volatilidad ${num(o.volatilidad,0)}%</div></div>
+    <div class="big neg">${num(o.desc,1)}%<small>vs nivel habitual</small></div></div>
+    <div class="stats">${badge(l)}<span class="st">sube a 6 meses <b>${l.pct}%</b> vs ${l.base}% cualquier día · n=${l.n}</span><span class="st">mediana <b>${l.med>0?'+':''}${l.med}%</b> · malo <b>${l.malo}%</b></span><span class="st">ticket orientativo <b>${eur(ticket(o))}</b></span>${fund}</div>
+    ${fichaHTML(o.ticker)}
+    <div class="pie"><button class="btn sm" data-det="${esc(o.ticker)}">Gráfico y estadística</button><button class="btn sm" data-anadir="${esc(o.ticker)}">Añadir a cartera</button>${db&&sample&&FICHAS[fid(o.ticker)]?`<button class="btn sm ghost" data-analizar="${esc(o.ticker)}">Actualizar análisis</button>`:''}<button class="btn sm ghost peligro" data-excluir="${esc(o.ticker)}">No me interesa</button><span class="fecha">${fechaFicha(o.ticker)}</span></div></article>`;
+}
+function ultimoAnalisis(){ const f = Object.values(FICHAS).map(x => x.fecha).sort().pop(); return f ? `Último análisis: ${f.slice(8,10)}/${f.slice(5,7)}` : (db&&sample ? 'Aún sin análisis de Claude' : ''); }
+function propuestaRevision(e){
+  if (e.revisar && e.revisar <= hoyISO()) return true;
+  if (e.tipo!=='accion' && e.tipo!=='sector') return false;
+  const d = descDe(e.valor), n = nivelDe(e.valor);
+  return d!=null && e.desc_al_excluir!=null && d <= e.desc_al_excluir - 10 && n==='verde';
+}
+
+// ============================ exclusiones ============================
+function formExcluir(t){
+  if (!db) return toast('Abre la app en claude.ai para guardar exclusiones.');
+  const i = item(t), sec = i ? i.sector : (UX[t]||[])[2], esSector = i && i.tipo==='sector';
+  lateral('No me interesa: ' + nombreDe(t), `
+    <p class="hint">Lo quitaré de la vista y lo tendré en cuenta en los próximos análisis. Podrás reactivarlo cuando quieras; si se vuelve muy interesante, te lo propondré.</p>
+    ${!esSector && sec ? `<label class="f">Alcance</label><select class="inp" id="exA"><option value="accion">Solo ${esc(nombreDe(t))}</option><option value="sector_acciones">Todas las empresas de ${esc(sec)}</option></select>` : ''}
+    <label class="f">Motivo (lo leerá Claude)</label><textarea class="inp" id="exM" placeholder="Ej.: no quiero lujo ni ropa por ahora, lo veo demasiado inestable"></textarea>
+    <label class="f">Revisar de nuevo el</label><input class="inp" type="date" id="exR" value="${sumaDias(hoyISO(),60)}">
+    <div style="margin-top:16px;display:flex;gap:8px"><button class="btn pri" id="exOk">Excluir</button><button class="btn" data-cerrar>Cancelar</button></div>`);
+  $('#exOk').onclick = async () => {
+    const alc = $('#exA') ? $('#exA').value : (esSector ? 'sector' : 'accion');
+    const id = alc==='sector_acciones' ? 'sec_' + fid(sec) : fid(t);
+    const doc = {tipo: alc, valor: alc==='sector_acciones' ? sec : t, nombre: alc==='sector_acciones' ? 'Empresas de ' + sec : nombreDe(t), sector: sec || null,
+      motivo: $('#exM').value.trim(), fecha: hoyISO(), revisar: $('#exR').value || null, desc_al_excluir: descDe(t), estado: 'activa'};
+    try { await db.collection('exclusiones').doc(id).set(doc); cerrarTodo(); toast('Excluido. Lo verás en "Mis exclusiones".'); } catch(e) { toast('No se pudo guardar: ' + (e.message||e.code)); }
+  };
+}
+async function reactivar(id, yAnalizar){
+  const e = EXCL[id]; if (!e) return;
+  try { await db.collection('exclusiones').doc(id).delete(); toast('Reactivado.'); if (yAnalizar) analizarUno(e.valor); } catch(err) { toast('No se pudo reactivar.'); }
+}
+async function posponer(id){ const e = EXCL[id]; if (!e) return; try { await db.collection('exclusiones').doc(id).set({...e, revisar: sumaDias(hoyISO(),60), desc_al_excluir: descDe(e.valor) ?? e.desc_al_excluir}); toast('Pospuesto 2 meses.'); } catch(err) { toast('No se pudo guardar.'); } }
+
+// ============================ Claude: herramientas ============================
+let esquemaWeb = null;
+async function herramientasWeb(){
+  if (!mcp) return [];
+  const t = [{name:'buscar_web', description:'Busca noticias y páginas recientes en la web. Devuelve resultados con título, URL y extracto. Úsala para saber por qué ha caído algo o qué ha pasado recientemente.',
+    inputSchema:{type:'object', properties:{consulta:{type:'string', description:'Qué buscar, en inglés o español'}}, required:['consulta']},
+    execute: async (inp, ctx) => {
+      const q = String(inp.consulta||'');
+      if (!esquemaWeb) { try { esquemaWeb = (await mcp.describeTool('Parallel Search','web_search')).inputSchema; } catch(e) {} }
+      const arg = construirArg(esquemaWeb, q);
+      try { const r = await mcp.callTool('Parallel Search','web_search', arg, {signal: ctx.signal}); return recorta(r.payload ?? r.content); }
+      catch(e) {
+        if (e.code==='server_not_connected' || e.code==='needs_reauth') throw new Error('El buscador web no está conectado: conecta "Parallel Search" en claude.ai → Ajustes → Conectores.');
+        if (!esquemaWeb && e.code==='tool_error') { const r = await mcp.callTool('Parallel Search','web_search', {objective:q, search_queries:[q]}, {signal: ctx.signal}); return recorta(r.payload ?? r.content); }
+        throw new Error(e.message || e.code);
+      }
+    }},
+    {name:'leer_pagina', description:'Lee el contenido de una URL concreta (por ejemplo una noticia encontrada con buscar_web).',
+    inputSchema:{type:'object', properties:{url:{type:'string'}}, required:['url']},
+    execute: async (inp, ctx) => {
+      let sch = null; try { sch = (await mcp.describeTool('Parallel Search','web_fetch')).inputSchema; } catch(e) {}
+      const u = String(inp.url||''); let arg = {url:u};
+      if (sch && sch.properties) { const p = Object.keys(sch.properties); if (p.includes('urls')) arg = {urls:[u]}; if (p.includes('objective')) arg.objective = 'Extraer lo relevante para inversión'; }
+      const r = await mcp.callTool('Parallel Search','web_fetch', arg, {signal: ctx.signal}); return recorta(r.payload ?? r.content, 9000);
+    }}];
+  return t;
+}
+function construirArg(sch, q){
+  if (!sch || !sch.properties) return {query: q};
+  const out = {}, props = sch.properties, req = sch.required || Object.keys(props);
+  for (const k of Object.keys(props)) {
+    const p = props[k] || {};
+    if (p.type==='string' && (req.includes(k) || /query|objective|q$/i.test(k))) out[k] = q;
+    if (p.type==='array' && (req.includes(k) || /quer/i.test(k))) out[k] = [q];
+  }
+  return Object.keys(out).length ? out : {query: q};
+}
+function recorta(x, n=7000){ const s = typeof x==='string' ? x : JSON.stringify(x); return s.length>n ? s.slice(0,n)+'…' : s; }
+const toolDatos = {name:'datos_producto', description:'Devuelve los datos del panel para un ticker o nombre (precio, % frente a nivel habitual, variaciones, estadística histórica, fundamentales). Úsala para no inventar cifras.',
+  inputSchema:{type:'object', properties:{ticker_o_nombre:{type:'string'}}, required:['ticker_o_nombre']},
+  execute: inp => {
+    const q = String(inp.ticker_o_nombre||'').toLowerCase();
+    let i = IDX[inp.ticker_o_nombre] || Object.values(IDX).find(x => x.nombre && x.nombre.toLowerCase().includes(q));
+    if (i) return resumenItem(i, true);
+    const u = U.find(x => x[0].toLowerCase()===q || (x[1]||'').toLowerCase().includes(q));
+    if (u) return {ticker:u[0], nombre:u[1], sector:u[2], region:u[3], moneda:u[4], precio:u[5], vs_nivel_habitual_pct:u[6], var_5d:u[7], var_1m:u[8], var_1a:u[9], lectura:u[10], sube_6m_pct:u[11], cualquier_dia_pct:u[12], casos:u[13]};
+    throw new Error('No está en el panel');
+  }};
+function resumenItem(i, largo){
+  const o = {ticker:i.ticker, nombre:i.nombre, tipo:i.tipo, sector:i.sector, moneda:i.moneda, precio:i.precio, fecha:i.fecha, vs_nivel_habitual_pct:i.desc, var_5d:i.var_5d, var_1m:i.var_1m, var_3m:i.var_3m, var_1a:i.var_1a, volatilidad:i.volatilidad};
+  if (i.lectura) o.lectura = i.lectura.texto;
+  if (largo && i.fund) { const {descripcion_en, ...f} = i.fund; o.fundamentales = f; if (descripcion_en) o.descripcion = descripcion_en; }
+  if (i.ucits) o.etf_comprable = `${i.ucits.nombre} (${i.ucits.ticker}${i.ucits.isin?', ISIN '+i.ucits.isin:''})`;
+  return o;
+}
+function contextoBreve(){
+  const m = D.mercado;
+  const ex = Object.values(EXCL).filter(e => e.estado!=='reactivada').map(e => `${e.nombre}: ${e.motivo||'sin motivo'}`);
+  return `Datos del panel (${D.actualizado}, hora de Madrid). "vs nivel habitual" = % frente al percentil 80 de los cierres del último año.
+Índices: ${m.indices.map(i => `${i.nombre} ${i.desc}% (5d ${i.var_5d}%)`).join('; ')}.
+Contexto: ${m.contexto.map(i => `${i.nombre} ${i.precio}`).join('; ')}.
+Sectores: ${m.sectores.map(s => `${s.nombre} ${s.desc}% [${s.lectura?.nivel}]`).join('; ')}.
+Radar de empresas: ${D.oportunidades.filter(o => o.radar==='principal').slice(0,20).map(o => `${o.nombre} (${o.ticker}, ${o.sector}) ${o.desc}%, sube 6m ${o.lectura.pct}% vs ${o.lectura.base}%`).join('; ')}.
+Exclusiones del usuario: ${ex.join('; ') || 'ninguna'}.`;
+}
+const PERFIL = `Usuario: no es experto en bolsa (trabaja en finanzas corporativas y presupuestos). Invierte desde Trade Republic (España), con horizonte de 1 a 12 meses (mínimo 15 días), por tickets pequeños de 1.000–2.500 € dentro de un presupuesto total de 75.000 €; el dinero no invertido rinde un 3% en cuenta. Prefiere diversificar con ETF sectoriales y solo empresas sueltas si hay caídas con potencial claro. Quiere análisis honesto, sin vender humo: si algo no se sabe, dilo.`;
+
+// ============================ Claude: fichas ============================
+async function analizarUno(t, btn){
+  if (!sample || !db) return toast('Abre la app desde claude.ai para usar Claude.');
+  if (btn) { btn.disabled = true; btn.textContent = 'Analizando…'; }
+  try { await generarFicha(t); toast('Análisis guardado: ' + (t==='_mercado'?'mercado':nombreDe(t))); }
+  catch(e) { toast(msgError(e)); if (btn) { btn.disabled = false; btn.textContent = 'Reintentar'; } }
+}
+function msgError(e){
+  const c = e && e.code;
+  if (c==='not_granted') return 'No has permitido que la app use Claude.';
+  if (c==='rate_limited') return 'Has llegado al límite de uso por ahora. Prueba más tarde.';
+  if (c==='invalid_json') return 'Claude respondió en un formato inesperado. Prueba otra vez.';
+  if (c==='cancelled') return 'Cancelado.';
+  return 'No se pudo completar: ' + (e.message || c || e);
+}
+async function generarFicha(t){
+  const herr = await herramientasWeb();
+  const ex = Object.values(EXCL).filter(e => e.estado!=='reactivada').map(e => `- ${e.nombre}: ${e.motivo||'sin motivo'}`).join('\n') || 'ninguna';
+  let sujeto;
+  if (t==='_mercado') sujeto = `Analiza el MOMENTO DEL MERCADO en conjunto (no un producto). Usa los datos del panel:\n${contextoBreve()}\nEn "negocio" explica qué está pasando en 2-3 frases; "por_que_cae" las causas; "riesgo", "oportunidad", "invalida" (qué cambiaría el escenario), "abogado" y "conclusion" (qué tipo de producto conviene vigilar con tickets pequeños, sin recomendar compras concretas).`;
+  else { const i = item(t); sujeto = `Analiza este producto con los datos del panel:\n${JSON.stringify(resumenItem(i, true))}\n${i.tipo==='sector'?'Es un SECTOR (ETF de EE. UU. como referencia estadística; el comprable en Europa es el ETF UCITS indicado). "negocio" = qué empresas lo forman y de qué dependen.':''}`; }
+  const prompt = `Eres el analista de RadarBolsa. ${PERFIL}
+${sujeto}
+${herr.length ? 'Busca en la web (1-3 búsquedas) la causa concreta y reciente de la caída. No inventes noticias: si no encuentras la causa, dilo.' : 'No tienes acceso a noticias: basa "por_que_cae" en los datos y di explícitamente que la causa concreta no está verificada.'}
+Exclusiones del usuario (con su motivo):\n${ex}
+Si este producto choca con alguna exclusión (por su actividad, no solo por el nombre), indícalo en "conflicto_exclusion" (texto breve); si no, null.
+Responde SOLO con un objeto JSON en español, cada campo de 1 a 3 frases claras para alguien no experto:
+{"negocio":"","por_que_cae":"","riesgo":"","oportunidad":"","invalida":"","abogado":"el mejor argumento en contra, usando la estadística si aporta","conclusion":"lectura práctica a 1-12 meses, sin recomendar comprar ni vender; di si es mejor vía ETF sectorial","conflicto_exclusion":null,"fuentes":["url"]}`;
+  const r = await sample.json(prompt, herr.length ? {tools: herr} : {cache:false});
+  if (!r || !r.conclusion) throw {code:'invalid_json'};
+  const doc = {ticker: t, fecha: hoyISO(), nivel: t==='_mercado' ? null : (item(t)?.lectura?.nivel || null),
+    negocio: r.negocio||'', por_que_cae: r.por_que_cae||'', riesgo: r.riesgo||'', oportunidad: r.oportunidad||'', invalida: r.invalida||'',
+    abogado: r.abogado||'', conclusion: r.conclusion||'', conflicto_exclusion: r.conflicto_exclusion || null, fuentes: Array.isArray(r.fuentes) ? r.fuentes.slice(0,5) : []};
+  await db.collection('fichas').doc(fid(t)).set(doc);
+}
+let relanzando = false;
+async function relanzar(){
+  if (relanzando) return; relanzando = true;
+  const prog = $('#relProg');
+  const frescas = t => { const f = FICHAS[fid(t)]; return f && diasEntre(f.fecha, hoyISO()) < 5; };
+  const cola = ['_mercado',
+    ...D.mercado.sectores.filter(s => !excluido(s.ticker) && s.lectura?.nivel && s.lectura.nivel!=='neutro').map(s => s.ticker),
+    ...D.oportunidades.filter(o => o.radar==='principal' && !excluido(o.ticker)).slice(0,6).map(o => o.ticker),
+    ...Object.values(CART).filter(p => p.estado==='abierta').map(p => p.ticker)];
+  const lista = [...new Set(cola)].filter(t => !frescas(t) && (t==='_mercado' || item(t)));
+  if (!lista.length) { toast('Todo está analizado en los últimos 5 días.'); relanzando = false; return; }
+  const est = {}; lista.forEach(t => est[t] = 'pendiente');
+  const pinta = () => { if (prog) prog.innerHTML = `<div class="hint">Analizando ${lista.length} elementos (2 a la vez, cada uno puede tardar 30-90 s; puedes seguir usando la app):</div>` + lista.map(t => `<div>${est[t]==='ok'?'✅':est[t]==='error'?'⚠️':est[t]==='en curso'?'⏳':'·'} ${esc(t==='_mercado'?'Lectura del mercado':nombreDe(t))} <span class="hint">${est[t]}</span></div>`).join(''); };
+  pinta();
+  const cp = [...lista];
+  const trabajador = async () => { while (cp.length) { const t = cp.shift(); est[t] = 'en curso'; pinta(); try { await generarFicha(t); est[t] = 'ok'; } catch(e) { est[t] = 'error'; if (e && (e.code==='not_granted' || e.code==='rate_limited')) { cp.length = 0; toast(msgError(e)); } } pinta(); } };
+  await Promise.all([trabajador(), trabajador()]);
+  relanzando = false; toast('Análisis terminado.');
+}
+
+// ============================ preguntas ============================
+let chat = [];
+$('#fBusca').onsubmit = ev => { ev.preventDefault(); const q = $('#qBusca').value.trim(); abrirChat(q); $('#qBusca').value = ''; };
+function abrirChat(q){
+  const sug = ['¿Qué sector tiene mejor histórico tras la caída actual?', '¿Por qué ha caído hoy el Nasdaq?', 'Con 2.500 €, ¿qué opción del radar diversifica más?', '¿Alguna de mis posiciones debería venderla?'];
+  lateral('Pregunta a RadarBolsa', `<div id="chatM">${chat.map(m => `<div class="msg ${m.role==='user'?'u':'a'}">${m.role==='user'?esc(m.content):md(m.content)}</div>`).join('')}</div>
+    ${!sample ? '<div class="banner info"><div class="txt">Las preguntas funcionan al abrir la app desde claude.ai.</div></div>' : ''}
+    <div id="chatSug">${chat.length ? '' : sug.map(s => `<span class="chip" data-sug="${esc(s)}">${esc(s)}</span>`).join('')}</div>
+    <form id="chatF" style="display:flex;gap:8px;margin-top:10px"><input class="inp" id="chatI" placeholder="Escribe tu pregunta" autocomplete="off"><button class="btn pri">Enviar</button></form>
+    <p class="hint">Responde Claude con los datos del panel${mcp?' y búsquedas web':''}. Gasta tu uso de Claude como un mensaje de chat. No es asesoramiento financiero.</p>`);
+  document.querySelectorAll('[data-sug]').forEach(c => c.onclick = () => preguntar(c.dataset.sug));
+  $('#chatF').onsubmit = ev => { ev.preventDefault(); const v = $('#chatI').value.trim(); if (v) { $('#chatI').value=''; preguntar(v); } };
+  if (q) preguntar(q);
+}
+async function preguntar(q){
+  if (!sample) return toast('Abre la app desde claude.ai para preguntar.');
+  chat.push({role:'user', content:q});
+  const M = $('#chatM'); $('#chatSug') && ($('#chatSug').innerHTML = '');
+  M.insertAdjacentHTML('beforeend', `<div class="msg u">${esc(q)}</div><div class="msg a" id="chatR"><span class="estado">Pensando… (puede tardar hasta un minuto si busca en la web)</span></div>`);
+  const R = $('#chatR'); R.removeAttribute('id');
+  const cartera = Object.values(CART).filter(p => p.estado==='abierta').map(p => `${p.nombre} (${p.ticker}), ${p.persona}, ${p.importe}€ desde ${p.fecha}`).join('; ') || 'vacía';
+  const reglas = `Eres el asistente de RadarBolsa. ${PERFIL}
+Responde en español, claro y breve (máximo ~250 palabras salvo que pida detalle), con estructura si ayuda. Usa SOLO cifras del panel (herramienta datos_producto) o de búsquedas web citando la fuente; no inventes. No des recomendaciones personalizadas de compra/venta como orden: da criterios y lo que dicen los datos, y recuerda que la decisión es suya.
+${contextoBreve()}
+Cartera abierta: ${cartera}.`;
+  const tools = [toolDatos, ...(await herramientasWeb())];
+  try {
+    const {text} = await sample([{role:'user', content:reglas}, ...chat.slice(-8)], {tools, onText: ({text}) => { R.innerHTML = md(text); }});
+    chat.push({role:'assistant', content:text}); R.innerHTML = md(text);
+  } catch(e) { R.innerHTML = (e.text ? md(e.text) : '') + `<p class="estado">${esc(msgError(e))}</p>`; chat.pop(); }
+}
+function md(t){
+  const lines = esc(t).split('\n'); let h = '', ul = false;
+  for (let l of lines) {
+    l = l.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\[(.+?)\]\((https?:[^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+    if (/^\s*[-*•]\s+/.test(l)) { if (!ul) { h += '<ul>'; ul = true; } h += '<li>' + l.replace(/^\s*[-*•]\s+/,'') + '</li>'; continue; }
+    if (ul) { h += '</ul>'; ul = false; }
+    if (/^#{1,4}\s/.test(l)) h += '<p><b>' + l.replace(/^#+\s/,'') + '</b></p>'; else if (l.trim()) h += '<p>' + l + '</p>';
+  }
+  return h + (ul ? '</ul>' : '');
+}
+
+// ============================ DETALLE ============================
+let detChart = null, detEstado = {};
+async function abrirDetalle(t){
+  const i = item(t);
+  if (!i) { const u = UX[t]; if (u) { toast(`${u[1]}: ${num(u[6],1)}% vs nivel habitual. Su gráfico estará disponible cuando entre en el radar o en tu cartera.`); } return; }
+  cerrarTodo();
+  $('#velo').classList.add('on'); $('#detalle').classList.add('on');
+  const l = i.lectura, f = i.fund || {};
+  $('#detC').innerHTML = `<div style="flex:1"><div style="font-size:19px;font-weight:750">${esc(i.nombre)} <span class="mut" style="font-weight:400;font-size:14px">${esc(i.ticker)}</span></div>
+    <div class="hint">${i.tipo==='accion'?esc(i.sector||'')+' · '+esc(i.region):i.tipo==='sector'?'Sector · datos del ETF de EE. UU. (historia desde '+i.historia_desde+')':i.tipo==='ucits'?'ETF comprable en Europa · sector '+esc(i.sector):i.tipo==='indice'?'Índice de referencia':'Indicador de contexto'} · último dato ${esc(i.fecha)}${i.comprable?' · comprable: '+esc(i.comprable)+(i.isin?' ('+esc(i.isin)+')':''):''}</div></div>
+    ${i.tipo!=='contexto' && db ? `<button class="btn sm" data-anadir="${esc(i.ucits?i.ucits.ticker:i.ticker)}">Añadir a cartera</button>` : ''}
+    ${i.tipo!=='contexto' && i.tipo!=='ucits' && db && sample ? `<button class="btn sm" data-analizar="${esc(i.ticker)}">${FICHAS[fid(i.ticker)]?'Actualizar análisis':'Analizar con Claude'}</button>` : ''}
+    ${(i.tipo==='accion'||i.tipo==='sector') && db ? `<button class="btn sm ghost peligro" data-excluir="${esc(i.ticker)}">No me interesa</button>` : ''}
+    <button class="cerrar" data-cerrar aria-label="Cerrar">×</button>`;
+  const kp = (k, v, s='') => `<div class="kpi" style="cursor:default"><div class="l">${k}</div><div class="v" style="font-size:22px">${v}</div><div class="s">${s}</div></div>`;
+  let h = `<div class="g g-kpi">${kp('Precio', num(i.precio, i.precio<10?4:2), esc(i.moneda))}${kp('vs nivel habitual', pct(i.desc,1,false), 'nivel habitual (P80): '+num(i.p80))}${kp('1 mes', pct(i.var_1m,1,false))}${kp('1 año', pct(i.var_1a,1,false))}${kp('Rango del año', num(i.min_1a,0)+' – '+num(i.max_1a,0), esc(i.moneda))}${kp('Volatilidad', num(i.volatilidad,0)+'%', 'cuánto se mueve en un año normal')}</div>`;
+  if (l) h += `<div class="card" style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">${badge(l)}<span>${esc(l.texto)}</span></div>`;
+  h += `<div class="g g-2" style="margin-top:14px;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)"><div class="card">
+    <div class="rango"><span class="seg" id="rg">${['1M','3M','6M','1A','3A','5A','Máx'].map(r => `<button data-r="${r}">${r}</button>`).join('')}</span>
+      <span class="hint">o desde</span><input type="date" id="rgD"><span class="hint">hasta</span><input type="date" id="rgH">
+      <span style="margin-left:auto;display:flex;gap:6px"><button class="btn sm" id="bTabla">Ver valores</button><button class="btn sm" id="bCsv">Copiar CSV</button></span></div>
+    <div class="fig"><canvas id="cDet"></canvas></div><div id="tDet" class="tw" style="display:none;max-height:300px;overflow-y:auto;margin-top:10px"></div>
+    <p class="hint" style="margin:8px 0 0">Línea discontinua: nivel habitual (percentil 80 del año anterior a cada fecha).</p></div>
+    <div class="card">${tablaHist(i)}</div></div>`;
+  if (i.tipo!=='contexto' && i.tipo!=='ucits') h += `<h2 class="sep">Análisis</h2><div class="tarj">${fichaHTML(i.ticker, {abierta:true})}</div>`;
+  if (i.ucits) { const u = i.ucits; h += `<div class="banner info" style="margin-top:14px"><div class="txt"><b>Comprable en Europa:</b> ${esc(u.nombre)} · ${esc(u.ticker)}${u.isin?' · ISIN '+esc(u.isin):''} · ${num(u.precio)} ${esc(u.moneda)} · ${pct(u.desc,1,false)} vs su nivel habitual · 1 mes ${pct(u.var_1m,1,false)}. Es de ámbito mundial, así que no coincide exactamente con el sector de EE. UU.</div><button class="btn sm" data-det="${esc(u.ticker)}">Ver su gráfico</button></div>`; }
+  if (Object.keys(f).length) {
+    const filas = [['Capitalización', f.capitalizacion ? num(f.capitalizacion/1e9,0)+' mil M' : null], ['PER (beneficio actual)', f.per], ['PER futuro', f.per_futuro], ['Crecimiento de ventas', f.crec_ventas!=null?f.crec_ventas+'%':null], ['Crecimiento de beneficio', f.crec_beneficio!=null?f.crec_beneficio+'%':null], ['Margen neto', f.margen!=null?f.margen+'%':null], ['Deuda / fondos propios', f.deuda_fp], ['Dividendo', f.dividendo!=null?f.dividendo+'%':null], ['Consenso analistas', f.consenso ? (CONS[f.consenso]||f.consenso) + (f.n_analistas?` (${f.n_analistas})`:'') : null], ['Precio objetivo medio', f.precio_objetivo]].filter(x => x[1]!=null);
+    h += `<h2 class="sep">Fundamentales</h2><div class="card"><div class="g" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">${filas.map(([k,v]) => `<div><div class="hint">${k}</div><div style="font-weight:650">${typeof v==='number'?num(v,1):esc(v)}</div></div>`).join('')}</div>${f.descripcion_en?`<p class="hint" style="margin:12px 0 0">${esc(f.descripcion_en)}</p>`:''}</div>`;
+  }
+  $('#detB').innerHTML = h; $('#detB').scrollTop = 0;
+  const s = await serie(t);
+  detEstado = {t, s, i, r:'1A', desde:null, hasta:null};
+  document.querySelectorAll('#rg button').forEach(b => b.onclick = () => { detEstado.r = b.dataset.r; detEstado.desde = detEstado.hasta = null; $('#rgD').value = $('#rgH').value = ''; dibujar(); });
+  const cambioFecha = () => { detEstado.desde = $('#rgD').value || null; detEstado.hasta = $('#rgH').value || null; if (detEstado.desde || detEstado.hasta) detEstado.r = null; dibujar(); };
+  $('#rgD').onchange = cambioFecha; $('#rgH').onchange = cambioFecha;
+  $('#bTabla').onclick = () => { const e = $('#tDet'); e.style.display = e.style.display==='none' ? 'block' : 'none'; $('#bTabla').textContent = e.style.display==='none' ? 'Ver valores' : 'Ocultar valores'; };
+  $('#bCsv').onclick = async () => { const p = puntos(); try { await navigator.clipboard.writeText('fecha;cierre;nivel_habitual\n' + p.map(x => `${x[0]};${String(x[1]).replace('.',',')};${x[2]!=null?String(x[2]).replace('.',','):''}`).join('\n')); toast('Copiado: pégalo en Excel.'); } catch(e) { toast('No se pudo copiar.'); } };
+  if (!s) { $('#cDet').parentElement.innerHTML = '<div class="vacio">Sin serie de precios para este producto.</div>'; return; }
+  const ult = s.d[s.d.length-1][0]; $('#rgH').max = ult; $('#rgD').max = ult; $('#rgD').min = s.m[0][0]+'-01';
+  dibujar();
+}
+function puntos(){
+  const {s, r, desde, hasta} = detEstado; if (!s) return [];
+  const N = {'1M':22,'3M':64,'6M':127,'1A':253,'3A':757,'5A':99999};
+  if (r && r!=='Máx') return s.d.slice(-N[r]);
+  if (r==='Máx') return s.m.map(x => [x[0], x[1], null]);
+  const d0 = desde || '1900-01-01', d1 = hasta || '2999-12-31';
+  if (d0 >= s.d[0][0]) return s.d.filter(x => x[0]>=d0 && x[0]<=d1);
+  return s.m.filter(x => x[0]>=d0.slice(0,7) && x[0]<=d1.slice(0,7)).map(x => [x[0], x[1], null]);
+}
+function dibujar(){
+  document.querySelectorAll('#rg button').forEach(b => b.classList.toggle('on', b.dataset.r===detEstado.r));
+  const p = puntos(); if (detChart) { detChart.destroy(); detChart = null; }
+  const cv = $('#cDet'); if (!cv || !p.length) return;
+  const tieneP80 = p.some(x => x[2]!=null);
+  detChart = new Chart(cv, {type:'line', data:{labels:p.map(x => x[0]), datasets:[
+      {label:'Precio', data:p.map(x => x[1]), borderColor:css('--acc'), borderWidth:2, pointRadius:0, pointHoverRadius:4, tension:.1},
+      ...(tieneP80 ? [{label:'Nivel habitual', data:p.map(x => x[2]), borderColor:css('--tx2'), borderWidth:1.3, borderDash:[5,4], pointRadius:0, pointHoverRadius:0}] : [])]},
+    options:{animation:false, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
+      plugins:{legend:{display:tieneP80, labels:{color:css('--tx2'), boxWidth:18}}, tooltip:{callbacks:{label:c => `${c.dataset.label}: ${num(c.raw)}`}}},
+      scales:{x:{grid:{display:false}, ticks:{color:css('--tx2'), maxTicksLimit:9, maxRotation:0}}, y:{grid:{color:css('--line2')}, ticks:{color:css('--tx2'), callback:v => num(v,0)}}}}});
+  let t = `<table><thead><tr><th>Fecha</th><th class="n">Cierre</th><th class="n">Variación</th><th class="n">vs nivel habitual</th></tr></thead><tbody>`;
+  for (let k = p.length-1; k >= 0 && k >= p.length-400; k--) { const v = k ? (p[k][1]/p[k-1][1]-1)*100 : null; t += `<tr><td class="num">${p[k][0]}</td><td class="n num">${num(p[k][1])}</td><td class="n">${pct(v,2)}</td><td class="n">${p[k][2]?pct((p[k][1]/p[k][2]-1)*100,1,false):'–'}</td></tr>`; }
+  $('#tDet').innerHTML = t + '</tbody></table>';
+}
+function tablaHist(i){
+  if (!i.tasas) return '<div class="hint">Indicador de contexto: no se calcula estadística de compra.</div>';
+  const T = i.tasas, cur = i.lectura?.usado ?? i.lectura?.tramo, base = T.cualquier_dia;
+  const color = (c, h) => { if (!c || !c.n) return ''; const b = base[h]?.pct ?? 50; const d = c.pct - b; const col = d>=3 && c.pct>=60 ? '--acc' : c.pct>=55 ? '--warn' : '--bad'; return `background:color-mix(in srgb,var(${col}) ${Math.min(30,10+Math.abs(d))}%,transparent)`; };
+  let h = `<h3>¿Qué pasó tras descuentos parecidos?</h3><p class="hint" style="margin-top:0">% de veces que estaba más alto pasado el plazo · mediana · (casos). Cada crisis cuenta una vez. Con menos de ${D.metodo.min_casos} casos, poco fiable.</p>
+    <table class="hist"><thead><tr><th>Descuento</th><th>1 mes</th><th>3 m</th><th>6 m</th><th>12 m</th></tr></thead><tbody>`;
+  for (const u of D.metodo.umbrales) { const r = T[u];
+    h += `<tr><td style="text-align:left">≥ ${u}%</td>${['1m','3m','6m','12m'].map(k => { const c = r[k]; if (!c || !c.n) return `<td class="mut">–</td>`; return `<td class="${u==cur&&k==='6m'?'cur':''} ${c.n<D.metodo.min_casos?'mut':''}" style="${c.n>=D.metodo.min_casos?color(c,k):''}"><b>${c.pct}%</b><br><span class="hint">${c.med>0?'+':''}${c.med}% (${c.n})</span></td>`; }).join('')}</tr>`; }
+  h += `<tr><td style="text-align:left"><i>Cualquier día</i></td>${['1m','3m','6m','12m'].map(k => base[k] ? `<td><i>${base[k].pct}%</i><br><span class="hint">${base[k].med>0?'+':''}${base[k].med}%</span></td>` : '<td>–</td>').join('')}</tr></tbody></table>
+    <p class="hint">Verde: claramente mejor que comprar cualquier día. Si no mejora esa fila, la caída por sí sola no da ventaja.</p>`;
+  return h;
+}
+
+// ============================ CARTERA ============================
+function fxHoy(){ const e = item('6E=F'); return e ? e.precio : null; }
+async function fxEn(fecha){ const s = await serie('6E=F'); if (!s) return fxHoy(); let v = null; for (const x of s.d) { if (x[0] > fecha) break; v = x[1]; } return v || fxHoy(); }
+function valorar(p){
+  const ph = precioDe(p.ticker), mon = p.moneda || monedaDe(p.ticker);
+  if (ph==null || !p.precio) return {valor:null};
+  let f = ph / p.precio, nota = '';
+  if (mon==='USD' && p.fx_compra && fxHoy()) f *= p.fx_compra / fxHoy();
+  else if (mon && mon!=='EUR' && mon!=='USD') nota = 'sin ajuste de divisa';
+  const valor = p.importe * f;
+  return {valor, res: valor - p.importe, resPct: (f-1)*100, nota, ph};
+}
+function senales(p, v){
+  const out = [], i = item(p.ticker), dias = diasEntre(p.fecha, hoyISO()), a = ajustes();
+  if (v.resPct==null) return out;
+  const obj = p.objetivo ?? (esETF(i) ? 10 : 20), stop = p.stop ?? (esETF(i) ? -12 : -20);
+  if (v.resPct >= obj) out.push(['s-ok', `Objetivo +${obj}% alcanzado: valora recoger beneficios`]);
+  else if (descDe(p.ticker)!=null && descDe(p.ticker) >= 0 && v.resPct > 0) out.push(['s-info', 'Ha vuelto a su nivel habitual']);
+  if (v.resPct <= stop) out.push(['s-bad', `Pérdida mayor de ${stop}%: revisa la tesis`]);
+  if (dias >= 365) out.push(['s-warn', 'Más de 12 meses: plazo cumplido']);
+  if (dias >= 180 && v.resPct < a.cuenta_pct * dias/365) out.push(['s-warn', `Rinde menos que el ${a.cuenta_pct}% de la cuenta`]);
+  return out;
+}
+function pintarCartera(){
+  const el = $('#s-cartera'), a = ajustes();
+  const abiertas = Object.entries(CART).filter(([,p]) => p.estado!=='cerrada').sort((x,y) => (y[1].fecha||'').localeCompare(x[1].fecha||''));
+  const cerradas = Object.entries(CART).filter(([,p]) => p.estado==='cerrada');
+  let inv = 0, val = 0, ganCuenta = 0;
+  const porP = {}; a.personas.forEach(x => porP[x.nombre] = 0);
+  const V = {};
+  for (const [id,p] of abiertas) { const v = valorar(p); V[id] = v; inv += p.importe; val += v.valor ?? p.importe; porP[p.persona] = (porP[p.persona]||0) + p.importe; ganCuenta += p.importe * a.cuenta_pct/100 * diasEntre(p.fecha, hoyISO())/365; }
+  const pres = a.personas.reduce((s,x) => s + x.presupuesto, 0), res = val - inv;
+  let h = '';
+  if (!db) h += `<div class="banner info"><div class="txt">Tu cartera se guarda de forma privada al abrir la app desde claude.ai.</div></div>`;
+  h += `<div class="g g-kpi">
+    <div class="kpi" style="cursor:default"><div class="l">Invertido</div><div class="v">${eur(inv)}</div><div class="s">de ${eur(pres)} · ${abiertas.length} posiciones</div><div class="meter" style="margin-top:8px"><i style="width:${Math.min(100,inv/pres*100)}%"></i></div></div>
+    <div class="kpi" style="cursor:default"><div class="l">Valor hoy</div><div class="v">${eur(val)}</div><div class="s">${pct(inv?res/inv*100:null)} · ${res>=0?'+':''}${eur(res)}</div></div>
+    <div class="kpi" style="cursor:default"><div class="l">Frente a la cuenta al ${a.cuenta_pct}%</div><div class="v ${res-ganCuenta>=0?'pos':'neg'}">${res-ganCuenta>=0?'+':''}${eur(res-ganCuenta)}</div><div class="s">lo que habría dado ese dinero en la cuenta: ${eur(ganCuenta)}</div></div>
+    ${a.personas.map(x => `<div class="kpi" style="cursor:default"><div class="l">${esc(x.nombre)}</div><div class="v">${eur(x.presupuesto - (porP[x.nombre]||0))}</div><div class="s">disponible de ${eur(x.presupuesto)}</div><div class="meter" style="margin-top:8px"><i style="width:${Math.min(100,(porP[x.nombre]||0)/x.presupuesto*100)}%;background:var(--c3)"></i></div></div>`).join('')}
+  </div>`;
+  // señales de venta
+  const al = [];
+  for (const [id,p] of abiertas) { for (const s of senales(p, V[id])) al.push([p, s]); const ve = VERED[id]; if (ve && (ve.veredicto==='vender' || ve.veredicto==='vender_parte')) al.push([p, ['s-warn', 'Claude: ' + (ve.veredicto==='vender'?'valorar vender':'valorar vender una parte')]]); }
+  h += `<div class="card" style="margin-top:14px"><h3>¿Toca vender algo? <span style="display:flex;gap:8px">${db?'<button class="btn pri sm" id="bNueva">Añadir posición</button>':''}${db&&sample&&abiertas.length?'<button class="btn sm" id="bRevisar">Revisar mi cartera con Claude</button>':''}</span></h3>
+    ${al.length ? al.map(([p,[c,t]]) => `<span class="chip" data-det="${esc(p.ticker)}"><span class="senal ${c}">${esc(t)}</span> ${esc(p.nombre)}</span>`).join('') : `<span class="mut">${abiertas.length ? 'Ninguna señal de venta hoy.' : 'Añade lo que compres y aquí verás avisos de venta: objetivo alcanzado, pérdida que obliga a revisar la tesis, plazo cumplido o rentabilidad por debajo de la cuenta.'}</span>`}
+    <div class="progreso" id="revProg"></div></div>`;
+  // tabla de posiciones
+  if (abiertas.length) {
+    h += `<h2 class="sep">Posiciones abiertas</h2><div class="card tw"><table><thead><tr><th>Producto</th><th>Persona</th><th>Compra</th><th class="n">Importe</th><th class="n">Valor hoy</th><th class="n">Resultado</th><th class="n">vs nivel habitual</th><th>Señal</th><th>Claude</th><th></th></tr></thead><tbody>`;
+    for (const [id,p] of abiertas) { const v = V[id], s = senales(p, v), ve = VERED[id];
+      h += `<tr><td><a href="#" data-det="${esc(p.ticker)}"><b>${esc(p.nombre)}</b></a> <span class="mut">${esc(p.ticker)}</span>${p.nota?`<div class="hint">${esc(p.nota)}</div>`:''}</td><td>${esc(p.persona)}</td><td class="num">${esc(p.fecha)}<div class="hint">${diasEntre(p.fecha,hoyISO())} días</div></td>
+        <td class="n num">${eur(p.importe)}</td><td class="n num">${v.valor!=null?eur(v.valor):'<span class="hint">sin precio hasta mañana</span>'}</td><td class="n">${pct(v.resPct)}${v.nota?`<div class="hint">${v.nota}</div>`:''}</td><td class="n">${pct(descDe(p.ticker),1,false)}</td>
+        <td>${s.map(([c,t]) => `<span class="senal ${c}">${esc(t)}</span>`).join(' ') || '<span class="senal s-ok">Mantener</span>'}</td>
+        <td>${ve?`<span class="senal ${ve.veredicto==='vender'?'s-bad':ve.veredicto==='vender_parte'?'s-warn':'s-info'}" title="${esc(ve.motivo)}">${esc({mantener:'Mantener',vigilar:'Vigilar',vender_parte:'Vender parte',vender:'Vender'}[ve.veredicto]||ve.veredicto)}</span><div class="hint" style="max-width:280px;white-space:normal">${esc(ve.motivo)}</div>`:'<span class="hint">—</span>'}</td>
+        <td style="white-space:nowrap">${db?`<button class="btn sm" data-editar="${id}">Editar</button> <button class="btn sm" data-vender="${id}">Vendida</button>`:''}</td></tr>`; }
+    h += `</tbody></table></div><p class="hint">Valor calculado con el último precio del panel${abiertas.some(([,p]) => (p.moneda||monedaDe(p.ticker))==='USD')?' y, para productos en dólares, con el cambio euro/dólar':''}. Trade Republic puede mostrar cifras algo distintas por comisiones y por el precio exacto de ejecución.</p>`;
+  }
+  if (cerradas.length) {
+    let tot = 0;
+    h += `<h2 class="sep">Historial</h2><div class="card tw"><table><thead><tr><th>Producto</th><th>Persona</th><th>Compra</th><th>Venta</th><th class="n">Importe</th><th class="n">Resultado</th><th></th></tr></thead><tbody>${cerradas.map(([id,p]) => { const r = p.importe_venta!=null ? p.importe_venta - p.importe : null; tot += r||0; return `<tr><td><b>${esc(p.nombre)}</b> <span class="mut">${esc(p.ticker)}</span></td><td>${esc(p.persona)}</td><td class="num">${esc(p.fecha)}</td><td class="num">${esc(p.fecha_venta||'')}</td><td class="n num">${eur(p.importe)}</td><td class="n">${r!=null?`<span class="${r>=0?'pos':'neg'}">${r>=0?'+':''}${eur(r)}</span>`:'–'}</td><td>${db?`<button class="btn sm ghost peligro" data-borrar="${id}">Borrar</button>`:''}</td></tr>`; }).join('')}</tbody></table><p class="hint">Resultado realizado total: <b class="${tot>=0?'pos':'neg'}">${tot>=0?'+':''}${eur(tot)}</b></p></div>`;
+  }
+  el.innerHTML = h;
+  const bn = $('#bNueva'); if (bn) bn.onclick = () => formPosicion(null);
+  const brv = $('#bRevisar'); if (brv) brv.onclick = revisarCartera;
+  el.querySelectorAll('[data-editar]').forEach(b => b.onclick = () => formPosicion(b.dataset.editar));
+  el.querySelectorAll('[data-vender]').forEach(b => b.onclick = () => formVenta(b.dataset.vender));
+  el.querySelectorAll('[data-borrar]').forEach(b => b.onclick = async () => { b.textContent = '¿Seguro?'; if (b.dataset.ok) { await db.collection('cartera').doc(b.dataset.borrar).delete().catch(() => toast('No se pudo borrar')); } b.dataset.ok = 1; });
+}
+function opcionesProducto(){
+  const m = D.mercado, ops = [];
+  m.indices.forEach(i => ops.push([i.ticker, `${i.nombre} — ${i.comprable||''}`]));
+  m.sectores.forEach(s => { if (s.ucits) ops.push([s.ucits.ticker, `Sector ${s.nombre} — ${s.ucits.nombre}`]); });
+  U.forEach(u => ops.push([u[0], `${u[1]} (${u[2]||''})`]));
+  return ops;
+}
+function formPosicion(id, tPre){
+  if (!db) return toast('Abre la app en claude.ai para guardar tu cartera.');
+  const p = id ? CART[id] : null, a = ajustes();
+  const t0 = p ? p.ticker : tPre || '';
+  const ops = opcionesProducto();
+  lateral(p ? 'Editar posición' : 'Añadir posición', `
+    <label class="f">Producto (busca por nombre o ticker)</label><input class="inp" list="dlProd" id="pT" value="${esc(t0)}" placeholder="Ej.: XDWT.DE, Alphabet, MSCI World"><datalist id="dlProd">${ops.map(([t,n]) => `<option value="${esc(t)}">${esc(n)}</option>`).join('')}</datalist>
+    <div class="hint" id="pInfo"></div>
+    <div class="fila"><div><label class="f">Persona</label><select class="inp" id="pP">${a.personas.map(x => `<option ${p&&p.persona===x.nombre?'selected':''}>${esc(x.nombre)}</option>`).join('')}</select></div>
+      <div><label class="f">Importe invertido (€)</label><input class="inp" type="number" id="pI" min="0" step="50" value="${p?p.importe:a.ticket_min}"></div></div>
+    <div class="fila"><div><label class="f">Fecha de compra</label><input class="inp" type="date" id="pF" value="${p?p.fecha:hoyISO()}" max="${hoyISO()}"></div>
+      <div><label class="f">Precio de compra (<span id="pMon">moneda del producto</span>)</label><input class="inp" type="number" id="pPr" step="any" value="${p?p.precio:''}"></div></div>
+    <div class="hint">Si lo dejas vacío, uso el cierre del panel en esa fecha.</div>
+    <div class="fila"><div><label class="f">Avisarme al ganar (%)</label><input class="inp" type="number" id="pO" value="${p&&p.objetivo!=null?p.objetivo:''}" placeholder="10 ETF · 20 acción"></div>
+      <div><label class="f">Avisarme al perder (%)</label><input class="inp" type="number" id="pS" value="${p&&p.stop!=null?p.stop:''}" placeholder="-12 ETF · -20 acción"></div></div>
+    <label class="f">Por qué lo compro (tesis)</label><textarea class="inp" id="pN" placeholder="Ej.: sector castigado con histórico favorable, horizonte 6-12 meses">${p?esc(p.nota||''):''}</textarea>
+    <div style="margin-top:16px;display:flex;gap:8px"><button class="btn pri" id="pOk">${p?'Guardar':'Añadir'}</button><button class="btn" data-cerrar>Cancelar</button>${p?`<button class="btn ghost peligro" id="pDel" style="margin-left:auto">Borrar</button>`:''}</div>`);
+  const info = () => { const t = $('#pT').value.trim(); const n = nombreDe(t), pr = precioDe(t), mo = monedaDe(t); $('#pInfo').innerHTML = pr!=null ? `${esc(n)} · último precio ${num(pr)} ${esc(mo)} · ${pct(descDe(t),1,false)} vs nivel habitual` : (t ? 'No está en el panel: añádelo igualmente y tendrá precio a partir de mañana.' : ''); $('#pMon').textContent = mo || 'moneda del producto'; };
+  $('#pT').oninput = info; info();
+  $('#pOk').onclick = async () => {
+    const t = $('#pT').value.trim(), imp = Number($('#pI').value), fecha = $('#pF').value || hoyISO();
+    if (!t || !imp) return toast('Indica producto e importe.');
+    let precio = Number($('#pPr').value) || null;
+    if (!precio) { const s = await serie(t); if (s) { for (const x of s.d) { if (x[0] > fecha) break; precio = x[1]; } } precio = precio || precioDe(t); }
+    const mon = monedaDe(t) || null;
+    const doc = {ticker:t, nombre:nombreDe(t), persona:$('#pP').value, importe:imp, fecha, precio, moneda:mon,
+      fx_compra: mon==='USD' ? await fxEn(fecha) : null, objetivo: $('#pO').value==='' ? null : Number($('#pO').value), stop: $('#pS').value==='' ? null : Number($('#pS').value),
+      nota:$('#pN').value.trim(), estado:'abierta'};
+    try { await db.collection('cartera').doc(id || undefined).set(doc); cerrarTodo(); toast(p ? 'Guardado.' : 'Añadido a tu cartera.'); if (!item(t)) toast('Guardado. Tendrá datos a partir de mañana.'); } catch(e) { toast('No se pudo guardar: ' + (e.message||e.code)); }
+  };
+  const del = $('#pDel'); if (del) del.onclick = async () => { if (del.dataset.ok) { await db.collection('cartera').doc(id).delete(); cerrarTodo(); toast('Borrada.'); } else { del.textContent = '¿Seguro? Pulsa otra vez'; del.dataset.ok = 1; } };
+}
+function formVenta(id){
+  const p = CART[id], v = valorar(p);
+  lateral('Registrar venta: ' + p.nombre, `<label class="f">Fecha de venta</label><input class="inp" type="date" id="vF" value="${hoyISO()}">
+    <label class="f">Importe recibido (€)</label><input class="inp" type="number" id="vI" step="1" value="${v.valor!=null?Math.round(v.valor):''}">
+    <div class="hint">Prefijado con el valor calculado hoy; pon el importe real de Trade Republic.</div>
+    <div style="margin-top:16px;display:flex;gap:8px"><button class="btn pri" id="vOk">Registrar</button><button class="btn" data-cerrar>Cancelar</button></div>`);
+  $('#vOk').onclick = async () => { try { await db.collection('cartera').doc(id).set({...p, estado:'cerrada', fecha_venta:$('#vF').value, importe_venta:Number($('#vI').value)||null}); cerrarTodo(); toast('Venta registrada.'); } catch(e) { toast('No se pudo guardar.'); } };
+}
+async function revisarCartera(){
+  const btn = $('#bRevisar'); btn.disabled = true; btn.textContent = 'Revisando…';
+  $('#revProg').innerHTML = '<span class="estado">Claude está revisando cada posición (puede tardar 1-2 minutos)…</span>';
+  const pos = Object.entries(CART).filter(([,p]) => p.estado!=='cerrada').map(([id,p]) => { const v = valorar(p), i = item(p.ticker); return {id, producto:p.nombre, ticker:p.ticker, persona:p.persona, compra:p.fecha, dias:diasEntre(p.fecha,hoyISO()), importe:p.importe, resultado_pct: v.resPct!=null?Math.round(v.resPct*10)/10:null, tesis:p.nota, datos: i ? resumenItem(i,false) : null, analisis_guardado: FICHAS[fid(p.ticker)]?.conclusion || null}; });
+  const prompt = `Eres el analista de RadarBolsa. ${PERFIL}
+Revisa cada posición abierta y di si conviene mantener, vigilar, vender una parte o vender, pensando en su horizonte (1-12 meses), si la tesis sigue viva, si ya ha recuperado su nivel habitual y si rinde más que el 3% de la cuenta. ${mcp?'Si una posición se ha movido mucho, busca en la web la causa (máximo 3 búsquedas en total).':''} Sé honesto: no es una orden, es una lectura.
+Posiciones: ${JSON.stringify(pos)}
+Responde SOLO con un array JSON: [{"id":"...","veredicto":"mantener|vigilar|vender_parte|vender","motivo":"1-2 frases"}]`;
+  try {
+    const herr = await herramientasWeb();
+    const r = await sample.json(prompt, herr.length ? {tools: herr} : {cache:false});
+    for (const x of (Array.isArray(r) ? r : [])) if (x && CART[x.id]) await db.collection('veredictos').doc(x.id).set({veredicto:String(x.veredicto||''), motivo:String(x.motivo||''), fecha:hoyISO()});
+    toast('Revisión guardada.');
+  } catch(e) { toast(msgError(e)); }
+  btn.disabled = false; btn.textContent = 'Revisar mi cartera con Claude'; $('#revProg').innerHTML = '';
+}
+
+// ============================ ajustes y ayuda ============================
+$('#bAjustes').onclick = () => {
+  const a = ajustes();
+  lateral('Presupuesto y tickets', `<p class="hint">Se usan para el ticket orientativo de cada oportunidad y para el seguimiento de tu cartera.</p>
+    ${a.personas.map((x,k) => `<div class="fila"><div><label class="f">Persona ${k+1}</label><input class="inp" id="aN${k}" value="${esc(x.nombre)}"></div><div><label class="f">Presupuesto (€)</label><input class="inp" type="number" id="aP${k}" value="${x.presupuesto}"></div></div>`).join('')}
+    <div class="fila"><div><label class="f">Ticket mínimo (€)</label><input class="inp" type="number" id="aMin" value="${a.ticket_min}"></div><div><label class="f">Ticket máximo (€)</label><input class="inp" type="number" id="aMax" value="${a.ticket_max}"></div></div>
+    <label class="f">Rentabilidad de la cuenta remunerada (%)</label><input class="inp" type="number" step="0.1" id="aC" value="${a.cuenta_pct}">
+    <div style="margin-top:16px"><button class="btn pri" id="aOk" ${db?'':'disabled'}>Guardar</button></div>`);
+  $('#aOk').onclick = async () => { const doc = {personas: a.personas.map((x,k) => ({nombre:$('#aN'+k).value.trim()||x.nombre, presupuesto:Number($('#aP'+k).value)||0})), ticket_min:Number($('#aMin').value)||1000, ticket_max:Number($('#aMax').value)||2500, cuenta_pct:Number($('#aC').value)||0};
+    try { await db.doc('ajustes/general').set(doc); cerrarTodo(); toast('Guardado.'); } catch(e) { toast('No se pudo guardar.'); } };
+};
+$('#bAyuda').onclick = () => lateral('Cómo leer RadarBolsa', `<div class="glos">
+  <div class="caja k-neg"><div class="t">${ICO.neg}Nivel habitual</div><p>El precio que el producto ha superado solo el 20% de los días del último año (percentil 80). Es una referencia más estable que el máximo, que es casi imposible de acertar. "−12% vs nivel habitual" significa que está un 12% por debajo de ese precio.</p></div>
+  <div class="caja k-opo"><div class="t">${ICO.opo}Histórico favorable / mixto</div><p>Desde 2000, cada vez que el producto estuvo así de por debajo de su nivel habitual, ¿estaba más alto 6 meses después? Favorable: en el 70% de los casos o más <i>y</i> mejor que comprar un día cualquiera. Mixto: entre el 55% y el 70%, o bueno pero no mejor que comprar cualquier día.</p></div>
+  <div class="caja k-rie"><div class="t">${ICO.rie}Mediana y escenario malo</div><p>Mediana: el resultado típico. Escenario malo: el 10% de los casos fue igual o peor. Es lo que conviene poder aguantar.</p></div>
+  <div class="caja k-inv"><div class="t">${ICO.inv}No es una predicción</div><p>Es lo que pasó antes. En empresas sueltas el futuro puede ser muy distinto (cambio de CEO, un producto que deja de vender…). Por eso cada tarjeta lleva el análisis cualitativo.</p></div>
+  <div class="caja k-dia"><div class="t">${ICO.dia}Volatilidad</div><p>Cuánto se mueve en un año normal. Un índice ronda el 15–20%; una tecnológica suelta, el 40–60%. A más volatilidad, más normal es una caída grande.</p></div>
+  <div class="caja k-con"><div class="t">${ICO.con}Ticket orientativo</div><p>Sugerencia según tu rango (1.000–2.500 €): más para ETF con histórico favorable, menos para empresas sueltas o volátiles. Ajústalo en ⚙.</p></div>
+  <div class="caja k-neg"><div class="t">${ICO.neg}¿Por qué dos productos por sector?</div><p>Los ETF sectoriales de EE. UU. tienen historia desde 1998 (mejor estadística), pero desde la UE no se pueden comprar. Al lado tienes el ETF europeo (UCITS) equivalente; verifica el ISIN en Trade Republic.</p></div>
+  <div class="caja k-cae"><div class="t">${ICO.cae}Horarios y fiscalidad</div><p>ETF europeos: compra entre 9:30 y 17:30. Acciones de EE. UU.: a partir de las 15:30. Los fondos indexados permiten traspasos sin tributar; los ETF y las acciones tributan al vender con ganancia.</p></div>
+  </div><p class="hint" style="margin-top:14px">Datos de Yahoo Finance, actualizados de lunes a viernes hacia las 11:50. Las lecturas históricas y los análisis de Claude no son asesoramiento financiero.</p>`);
+
+cargar();
+}
+</script>
+</body>
+</html>

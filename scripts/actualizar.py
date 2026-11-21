@@ -383,7 +383,9 @@ def main():
     def elegible(it):
         l = it["lectura"]
         return (it["desc"] is not None and it["desc"] <= radar.get("accion_min_descuento", -12)
-                and l["nivel"] in ("verde", "ambar"))
+                and l["nivel"] in ("verde", "ambar")
+                and (it["volatilidad"] or 0) <= radar.get("max_volatilidad", 60)
+                and (l.get("malo") if l.get("malo") is not None else -99) >= radar.get("peor_escenario_min", -30))
 
     cand = sorted([x for x in todas if elegible(x)],
                   key=lambda x: (x["lectura"].get("ventaja") or 0, x["lectura"].get("med") or 0), reverse=True)

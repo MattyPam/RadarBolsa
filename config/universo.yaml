@@ -20,6 +20,8 @@ radar:
   min_casos: 8                # precedentes mínimos para fiarse de la estadística
   max_por_sector: 3           # diversificación en la lista de acciones
   n_acciones: 30              # cuántas acciones pasan al radar con ficha completa
+  max_volatilidad: 60         # riesgo limitado: fuera las acciones que se mueven >60% al año
+  peor_escenario_min: -30     # fuera si el 10% de los peores casos a 6 meses perdió más de un 30%
 
 # --- Índices de referencia --------------------------------------------
 indices:
