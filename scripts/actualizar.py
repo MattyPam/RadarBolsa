@@ -29,6 +29,7 @@ import yaml
 RAIZ = Path(__file__).resolve().parent.parent
 CONFIG = RAIZ / "config" / "universo.yaml"
 CARTERA = RAIZ / "config" / "cartera.yaml"
+SEGUIMIENTO = RAIZ / "config" / "seguimiento.yaml"
 SP500_CACHE = RAIZ / "config" / "sp500_cache.csv"
 SALIDA = RAIZ / "docs" / "data"
 SERIES = SALIDA / "series"
@@ -318,9 +319,12 @@ def main():
     ahora = datetime.now(timezone.utc).astimezone(ZoneInfo("Europe/Madrid"))
     hoy = ahora.strftime("%Y-%m-%d")
 
-    cartera = []
-    if CARTERA.exists():
-        cartera = [c for c in (yaml.safe_load(CARTERA.read_text(encoding="utf-8")) or {}).get("tickers", []) if c]
+    def leer_lista(f):
+        if not f.exists():
+            return []
+        return [c for c in (yaml.safe_load(f.read_text(encoding="utf-8")) or {}).get("tickers", []) if c]
+    # cartera y seguimiento se sincronizan desde la app (lo que el usuario compra o quiere seguir)
+    cartera = list(dict.fromkeys(leer_lista(CARTERA) + leer_lista(SEGUIMIENTO)))
 
     acciones = sp500() + cfg.get("extra_us", []) + cfg.get("europa", [])
     vistos, acciones_u = set(), []
@@ -404,7 +408,7 @@ def main():
     print(f"Radar: {len(cand)} elegibles · {len(elegidas)} en radar")
 
     detalle = {x["ticker"] for x in elegidas + reserva} | set(cartera)
-    oportunidades, en_cartera = [], []
+    oportunidades, seguidos = [], []
     for x in todas:
         if x["ticker"] not in detalle:
             continue
@@ -413,8 +417,8 @@ def main():
         guardar_serie(x["ticker"], x.pop("_s"), x.pop("_p80"))
         if x["radar"]:
             oportunidades.append(x)
-        if x["ticker"] in cartera:
-            en_cartera.append(x["ticker"])
+        else:
+            seguidos.append(x)   # en cartera o en seguimiento, aunque no esté en el radar
     oportunidades.sort(key=lambda x: (x["radar"] != "principal", -(x["lectura"].get("ventaja") or 0)))
     # posiciones fuera del universo (p. ej. un ETF concreto)
     extra = []
@@ -471,7 +475,7 @@ def main():
 
     resumen = {
         "actualizado": ahora.strftime("%Y-%m-%d %H:%M"), "hoy": hoy,
-        "mercado": mercado, "oportunidades": oportunidades, "cartera_extra": extra,
+        "mercado": mercado, "oportunidades": oportunidades, "seguidos": seguidos + extra,
         "alertas": alertas, "alertas_nuevas": [al["clave"] for al in nuevas],
         "errores": errores[:50], "n_errores": len(errores), "n_universo": len(todas),
         "n_elegibles": len(cand),

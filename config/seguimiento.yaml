@@ -1,0 +1,5 @@
+# Empresas que quieres seguir siempre, estén o no en el radar.
+# La app lo sincroniza a diario (botón "Seguir").
+tickers:
+  - NVDA
+  - NKE

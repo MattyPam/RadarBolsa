@@ -246,7 +246,8 @@ const ICO = {
 };
 
 // ============================ estado ============================
-let D = null, U = [], UX = {}, IDX = {}, FICHAS = {}, EXCL = {}, CART = {}, VERED = {}, AJ = null;
+let D = null, U = [], UX = {}, IDX = {}, FICHAS = {}, EXCL = {}, CART = {}, VERED = {}, SEG = {}, AJ = null;
+const sigo = t => !!SEG[fid(t)];
 let db = null, sample = null, mcp = null;
 const AJ_DEF = {personas:[{nombre:'Yo', presupuesto:40000},{nombre:'Pam', presupuesto:35000}], ticket_min:1000, ticket_max:2500, cuenta_pct:3};
 const ajustes = () => ({...AJ_DEF, ...(AJ||{})});
@@ -269,7 +270,7 @@ async function cargar(){
   } catch(e) { $('#s-mercado').innerHTML = '<div class="card vacio">Todavía no hay datos. Se cargan cada día laborable hacia las 11:50.</div>'; $('#upd').textContent=''; return; }
   U.forEach(u => UX[u[0]] = u);
   const m = D.mercado;
-  [...m.indices, ...m.contexto, ...m.sectores, ...D.oportunidades, ...(D.cartera_extra||[])].forEach(i => IDX[i.ticker] = i);
+  [...m.indices, ...m.contexto, ...m.sectores, ...D.oportunidades, ...(D.seguidos||[])].forEach(i => IDX[i.ticker] = i);
   m.sectores.forEach(s => { if (s.ucits) IDX[s.ucits.ticker] = {...s.ucits, tipo:'ucits', sector:s.nombre, lectura:null, padre:s.ticker}; });
   $('#upd').textContent = `datos ${D.actualizado.slice(8,10)}/${D.actualizado.slice(5,7)} ${D.actualizado.slice(11)} · ${D.n_universo} empresas revisadas`;
   pintar();
@@ -288,7 +289,7 @@ async function conectar(){
     snap.docs.forEach(d => dest[d.id] = d.data());
     cb && cb(); pintar();
   }, e => console.warn(col, e));
-  sub('fichas', FICHAS); sub('exclusiones', EXCL); sub('cartera', CART); sub('veredictos', VERED);
+  sub('fichas', FICHAS); sub('exclusiones', EXCL); sub('cartera', CART); sub('veredictos', VERED); sub('seguimiento', SEG);
   db.doc('ajustes/general').onSnapshot(d => { AJ = d.exists ? d.data() : null; pintar(); }, () => {});
 }
 
@@ -316,6 +317,8 @@ document.addEventListener('click', ev => {
   const a = ev.target.closest('[data-det]'); if (a) { ev.preventDefault(); abrirDetalle(a.dataset.det); return; }
   const an = ev.target.closest('[data-analizar]'); if (an) { analizarUno(an.dataset.analizar, an); return; }
   const ex = ev.target.closest('[data-excluir]'); if (ex) { formExcluir(ex.dataset.excluir); return; }
+  const sg = ev.target.closest('[data-seguir]'); if (sg) { seguir(sg.dataset.seguir, true); return; }
+  const ns = ev.target.closest('[data-noseguir]'); if (ns) { seguir(ns.dataset.noseguir, false); return; }
   const ad = ev.target.closest('[data-anadir]'); if (ad) { formPosicion(null, ad.dataset.anadir); return; }
   const vm = ev.target.closest('[data-vermas]'); if (vm) { const f = vm.previousElementSibling; f.classList.toggle('abierta'); vm.textContent = f.classList.contains('abierta') ? 'Ver menos' : 'Leer completo'; return; }
   if (ev.target.closest('[data-cerrar]') || ev.target.id==='velo') cerrarTodo();
@@ -363,6 +366,7 @@ function ticket(i){
   return a.ticket_min;
 }
 function excluido(t){
+  if (sigo(t)) return null;
   const e = EXCL[fid(t)]; if (e && e.estado!=='reactivada') return e;
   const i = item(t), sec = i ? i.sector : (UX[t]||[])[2];
   return Object.values(EXCL).find(x => x.tipo==='sector_acciones' && x.estado!=='reactivada' && x.valor===sec && i && i.tipo==='accion') || null;
@@ -451,7 +455,9 @@ function pintarOportunidades(){
       <select id="fOrd"><option value="ventaja" ${filtros.orden==='ventaja'?'selected':''}>Ordenar: ventaja histórica</option><option value="desc" ${filtros.orden==='desc'?'selected':''}>Ordenar: mayor descuento</option><option value="med" ${filtros.orden==='med'?'selected':''}>Ordenar: mediana a 6 meses</option></select>
       <label class="hint"><input type="checkbox" id="fConf" ${filtros.ocultarConflicto?'checked':''}> ocultar las que chocan con mis exclusiones</label>
     </div><div class="progreso" id="relProg"></div></div>`;
-  ops = ops.filter(o => !excluido(o.ticker) && (!filtros.sector || o.sector===filtros.sector) && (!filtros.region || o.region===filtros.region) && (!filtros.nivel || o.lectura.nivel===filtros.nivel));
+  const segT = Object.values(SEG).map(x => x.ticker);
+  if (segT.length) h += `<h2 class="sep" style="margin-top:0">En seguimiento · ${segT.length}</h2><div class="g g-tarj" style="margin-bottom:8px">${segT.map(t => item(t) ? tarjetaAccion(item(t)) : tarjetaMinima(t)).join('')}</div><h2 class="sep">Radar de hoy</h2>`;
+  ops = ops.filter(o => !sigo(o.ticker) && !excluido(o.ticker) && (!filtros.sector || o.sector===filtros.sector) && (!filtros.region || o.region===filtros.region) && (!filtros.nivel || o.lectura.nivel===filtros.nivel));
   if (filtros.ocultarConflicto) ops = ops.filter(o => !(FICHAS[fid(o.ticker)]||{}).conflicto_exclusion);
   const k = filtros.orden==='desc' ? o => o.desc : filtros.orden==='med' ? o => -(o.lectura.med||0) : o => -(o.lectura.ventaja||0);
   ops.sort((x,y) => k(x)-k(y));
@@ -472,10 +478,25 @@ function tarjetaAccion(o){
   const l = o.lectura, f = o.fund || {};
   const fund = [f.per_futuro!=null?`PER futuro <b>${num(f.per_futuro,1)}</b>`:'', f.crec_ventas!=null?`ventas <b>${f.crec_ventas>0?'+':''}${num(f.crec_ventas,0)}%</b>`:'', f.margen!=null?`margen <b>${num(f.margen,0)}%</b>`:'', f.consenso?`analistas: <b>${esc(CONS[f.consenso]||f.consenso)}</b>`:''].filter(Boolean).map(x => `<span class="st">${x}</span>`).join('');
   return `<article class="tarj"><div class="cabt"><div><div class="nom" data-det="${esc(o.ticker)}">${esc(o.nombre)}</div><div class="meta">${esc(o.ticker)} · ${esc(o.sector||'')} · ${esc(o.region)} · volatilidad ${num(o.volatilidad,0)}%</div></div>
-    <div class="big neg">${num(o.desc,1)}%<small>vs nivel habitual</small></div></div>
-    <div class="stats">${badge(l)}<span class="st">sube a 6 meses <b>${l.pct}%</b> vs ${l.base}% cualquier día · n=${l.n}</span><span class="st">mediana <b>${l.med>0?'+':''}${l.med}%</b> · malo <b>${l.malo}%</b></span><span class="st">ticket orientativo <b>${eur(ticket(o))}</b></span>${fund}</div>
+    <div class="big ${o.desc<0?'neg':''}">${o.desc>0?'+':''}${num(o.desc,1)}%<small>vs nivel habitual</small></div></div>
+    <div class="stats">${sigo(o.ticker)?'<span class="badge b-verde">★ siguiendo</span>':''}${o.radar==='principal'&&sigo(o.ticker)?'<span class="badge">también en el radar</span>':''}${badge(l)}${l.pct!=null?`<span class="st">sube a 6 meses <b>${l.pct}%</b> vs ${l.base}% cualquier día · n=${l.n}</span><span class="st">mediana <b>${l.med>0?'+':''}${l.med}%</b> · malo <b>${l.malo}%</b></span>`:''}<span class="st">1 mes ${pct(o.var_1m)}</span>${l.nivel!=='neutro'?`<span class="st">ticket orientativo <b>${eur(ticket(o))}</b></span>`:''}${fund}</div>
     ${fichaHTML(o.ticker)}
-    <div class="pie"><button class="btn sm" data-det="${esc(o.ticker)}">Gráfico y estadística</button><button class="btn sm" data-anadir="${esc(o.ticker)}">Añadir a cartera</button>${db&&sample&&FICHAS[fid(o.ticker)]?`<button class="btn sm ghost" data-analizar="${esc(o.ticker)}">Actualizar análisis</button>`:''}<button class="btn sm ghost peligro" data-excluir="${esc(o.ticker)}">No me interesa</button><span class="fecha">${fechaFicha(o.ticker)}</span></div></article>`;
+    <div class="pie"><button class="btn sm" data-det="${esc(o.ticker)}">Gráfico y estadística</button><button class="btn sm" data-anadir="${esc(o.ticker)}">Añadir a cartera</button>${db?(sigo(o.ticker)?`<button class="btn sm ghost" data-noseguir="${esc(o.ticker)}">Dejar de seguir</button>`:`<button class="btn sm ghost" data-seguir="${esc(o.ticker)}">★ Seguir</button>`):''}${db&&sample&&FICHAS[fid(o.ticker)]?`<button class="btn sm ghost" data-analizar="${esc(o.ticker)}">Actualizar análisis</button>`:''}${sigo(o.ticker)?'':`<button class="btn sm ghost peligro" data-excluir="${esc(o.ticker)}">No me interesa</button>`}<span class="fecha">${fechaFicha(o.ticker)}</span></div></article>`;
+}
+function tarjetaMinima(t){
+  const u = UX[t];
+  return `<article class="tarj"><div class="cabt"><div><div class="nom">${esc(u?u[1]:t)}</div><div class="meta">${esc(t)}${u?' · '+esc(u[2]||'')+' · '+esc(u[3]):''}</div></div>
+    ${u?`<div class="big ${u[6]<0?'neg':''}">${u[6]>0?'+':''}${num(u[6],1)}%<small>vs nivel habitual</small></div>`:''}</div>
+    <div class="stats"><span class="badge b-verde">★ siguiendo</span>${u?`<span class="st">1 mes ${pct(u[8])}</span><span class="st">1 año ${pct(u[9])}</span>`:''}</div>
+    ${fichaHTML(t)}<div class="sinficha"><span>Gráfico, estadística y fundamentales a partir de la próxima actualización de datos.</span></div>
+    <div class="pie">${db?`<button class="btn sm ghost" data-noseguir="${esc(t)}">Dejar de seguir</button>`:''}<span class="fecha">${fechaFicha(t)}</span></div></article>`;
+}
+async function seguir(t, si){
+  if (!db) return toast('Abre la app en claude.ai para guardar.');
+  try {
+    if (si) { await db.collection('seguimiento').doc(fid(t)).set({ticker:t, nombre:nombreDe(t), fecha:hoyISO()}); toast(`Siguiendo ${nombreDe(t)}: aparecerá siempre en Oportunidades y en los análisis.`); }
+    else { await db.collection('seguimiento').doc(fid(t)).delete(); toast('Dejas de seguirlo.'); }
+  } catch(e) { toast('No se pudo guardar.'); }
 }
 function ultimoAnalisis(){ const f = Object.values(FICHAS).map(x => x.fecha).sort().pop(); return f ? `Último análisis: ${f.slice(8,10)}/${f.slice(5,7)}` : (db&&sample ? 'Aún sin análisis de Claude' : ''); }
 function propuestaRevision(e){
@@ -510,41 +531,25 @@ async function reactivar(id, yAnalizar){
 async function posponer(id){ const e = EXCL[id]; if (!e) return; try { await db.collection('exclusiones').doc(id).set({...e, revisar: sumaDias(hoyISO(),60), desc_al_excluir: descDe(e.valor) ?? e.desc_al_excluir}); toast('Pospuesto 2 meses.'); } catch(err) { toast('No se pudo guardar.'); } }
 
 // ============================ Claude: herramientas ============================
-let esquemaWeb = null;
+const SESION = 'radarbolsa-' + Math.random().toString(16).slice(2) + Date.now().toString(16);
 async function herramientasWeb(){
   if (!mcp) return [];
-  const t = [{name:'buscar_web', description:'Busca noticias y páginas recientes en la web. Devuelve resultados con título, URL y extracto. Úsala para saber por qué ha caído algo o qué ha pasado recientemente.',
-    inputSchema:{type:'object', properties:{consulta:{type:'string', description:'Qué buscar, en inglés o español'}}, required:['consulta']},
-    execute: async (inp, ctx) => {
-      const q = String(inp.consulta||'');
-      if (!esquemaWeb) { try { esquemaWeb = (await mcp.describeTool('Parallel Search','web_search')).inputSchema; } catch(e) {} }
-      const arg = construirArg(esquemaWeb, q);
-      try { const r = await mcp.callTool('Parallel Search','web_search', arg, {signal: ctx.signal}); return recorta(r.payload ?? r.content); }
-      catch(e) {
-        if (e.code==='server_not_connected' || e.code==='needs_reauth') throw new Error('El buscador web no está conectado: conecta "Parallel Search" en claude.ai → Ajustes → Conectores.');
-        if (!esquemaWeb && e.code==='tool_error') { const r = await mcp.callTool('Parallel Search','web_search', {objective:q, search_queries:[q]}, {signal: ctx.signal}); return recorta(r.payload ?? r.content); }
-        throw new Error(e.message || e.code);
-      }
-    }},
-    {name:'leer_pagina', description:'Lee el contenido de una URL concreta (por ejemplo una noticia encontrada con buscar_web).',
-    inputSchema:{type:'object', properties:{url:{type:'string'}}, required:['url']},
-    execute: async (inp, ctx) => {
-      let sch = null; try { sch = (await mcp.describeTool('Parallel Search','web_fetch')).inputSchema; } catch(e) {}
-      const u = String(inp.url||''); let arg = {url:u};
-      if (sch && sch.properties) { const p = Object.keys(sch.properties); if (p.includes('urls')) arg = {urls:[u]}; if (p.includes('objective')) arg.objective = 'Extraer lo relevante para inversión'; }
-      const r = await mcp.callTool('Parallel Search','web_fetch', arg, {signal: ctx.signal}); return recorta(r.payload ?? r.content, 9000);
-    }}];
-  return t;
-}
-function construirArg(sch, q){
-  if (!sch || !sch.properties) return {query: q};
-  const out = {}, props = sch.properties, req = sch.required || Object.keys(props);
-  for (const k of Object.keys(props)) {
-    const p = props[k] || {};
-    if (p.type==='string' && (req.includes(k) || /query|objective|q$/i.test(k))) out[k] = q;
-    if (p.type==='array' && (req.includes(k) || /quer/i.test(k))) out[k] = [q];
-  }
-  return Object.keys(out).length ? out : {query: q};
+  const err = e => { if (e && (e.code==='server_not_connected' || e.code==='needs_reauth')) return new Error('El buscador web no está conectado: conecta "Parallel Search" en claude.ai → Ajustes → Conectores.'); return new Error((e && (e.message || e.code)) || 'error'); };
+  return [
+    {name:'buscar_web', description:'Busca noticias y páginas recientes en la web. Devuelve resultados con título, URL, fecha y extractos que suelen bastar para responder. Úsala para saber por qué ha caído algo o qué ha pasado recientemente.',
+     inputSchema:{type:'object', properties:{objetivo:{type:'string', description:'Qué se quiere averiguar, en una frase concreta (inglés funciona mejor para noticias financieras)'}, consultas:{type:'array', items:{type:'string'}, description:'2-3 búsquedas cortas de 3-6 palabras, sin comillas'}}, required:['objetivo','consultas']},
+     execute: async (inp, ctx) => {
+       const q = Array.isArray(inp.consultas) && inp.consultas.length ? inp.consultas.map(String).slice(0,4) : [String(inp.objetivo||'')];
+       try { const r = await mcp.callTool('Parallel Search','web_search', {objective:String(inp.objetivo||q[0]), search_queries:q, session_id:SESION}, {signal: ctx.signal}); return recorta(r.payload ?? r.content); }
+       catch(e) { throw err(e); }
+     }},
+    {name:'leer_pagina', description:'Extrae lo relevante de una o varias URLs concretas (por ejemplo, noticias encontradas con buscar_web). Úsala solo si los extractos de buscar_web no bastan.',
+     inputSchema:{type:'object', properties:{urls:{type:'array', items:{type:'string'}}, objetivo:{type:'string'}}, required:['urls']},
+     execute: async (inp, ctx) => {
+       const urls = (Array.isArray(inp.urls) ? inp.urls : [inp.urls]).map(String).filter(u => /^https?:/.test(u)).slice(0,3);
+       try { const r = await mcp.callTool('Parallel Search','web_fetch', {urls, objective:String(inp.objetivo||'Información relevante para un inversor').slice(0,200), session_id:SESION}, {signal: ctx.signal}); return recorta(r.payload ?? r.content, 9000); }
+       catch(e) { throw err(e); }
+     }}];
 }
 function recorta(x, n=7000){ const s = typeof x==='string' ? x : JSON.stringify(x); return s.length>n ? s.slice(0,n)+'…' : s; }
 const toolDatos = {name:'datos_producto', description:'Devuelve los datos del panel para un ticker o nombre (precio, % frente a nivel habitual, variaciones, estadística histórica, fundamentales). Úsala para no inventar cifras.',
@@ -572,6 +577,7 @@ function contextoBreve(){
 Contexto: ${m.contexto.map(i => `${i.nombre} ${i.precio}`).join('; ')}.
 Sectores: ${m.sectores.map(s => `${s.nombre} ${s.desc}% [${s.lectura?.nivel}]`).join('; ')}.
 Radar de empresas: ${D.oportunidades.filter(o => o.radar==='principal').slice(0,20).map(o => `${o.nombre} (${o.ticker}, ${o.sector}) ${o.desc}%, sube 6m ${o.lectura.pct}% vs ${o.lectura.base}%`).join('; ')}.
+Empresas que el usuario sigue siempre: ${Object.values(SEG).map(x => `${x.nombre} (${x.ticker}) ${descDe(x.ticker)}%`).join('; ') || 'ninguna'}.
 Exclusiones del usuario: ${ex.join('; ') || 'ninguna'}.`;
 }
 const PERFIL = `Usuario: no es experto en bolsa (trabaja en finanzas corporativas y presupuestos). Invierte desde Trade Republic (España), con horizonte de 1 a 12 meses (mínimo 15 días), por tickets pequeños de 1.000–2.500 € dentro de un presupuesto total de 75.000 €; el dinero no invertido rinde un 3% en cuenta. Prefiere diversificar con ETF sectoriales y solo empresas sueltas si hay caídas con potencial claro. Quiere análisis honesto, sin vender humo: si algo no se sabe, dilo.`;
@@ -596,7 +602,7 @@ async function generarFicha(t){
   const ex = Object.values(EXCL).filter(e => e.estado!=='reactivada').map(e => `- ${e.nombre}: ${e.motivo||'sin motivo'}`).join('\n') || 'ninguna';
   let sujeto;
   if (t==='_mercado') sujeto = `Analiza el MOMENTO DEL MERCADO en conjunto (no un producto). Usa los datos del panel:\n${contextoBreve()}\nEn "negocio" explica qué está pasando en 2-3 frases; "por_que_cae" las causas; "riesgo", "oportunidad", "invalida" (qué cambiaría el escenario), "abogado" y "conclusion" (qué tipo de producto conviene vigilar con tickets pequeños, sin recomendar compras concretas).`;
-  else { const i = item(t); sujeto = `Analiza este producto con los datos del panel:\n${JSON.stringify(resumenItem(i, true))}\n${i.tipo==='sector'?'Es un SECTOR (ETF de EE. UU. como referencia estadística; el comprable en Europa es el ETF UCITS indicado). "negocio" = qué empresas lo forman y de qué dependen.':''}`; }
+  else { const i = item(t); const datos = i ? resumenItem(i, true) : toolDatos.execute({ticker_o_nombre:t}); sujeto = `Analiza este producto con los datos del panel:\n${JSON.stringify(datos)}\n${i && i.tipo==='sector'?'Es un SECTOR (ETF de EE. UU. como referencia estadística; el comprable en Europa es el ETF UCITS indicado). "negocio" = qué empresas lo forman y de qué dependen.':''}`; }
   const prompt = `Eres el analista de RadarBolsa. ${PERFIL}
 ${sujeto}
 ${herr.length ? 'Busca en la web (1-3 búsquedas) la causa concreta y reciente de la caída. No inventes noticias: si no encuentras la causa, dilo.' : 'No tienes acceso a noticias: basa "por_que_cae" en los datos y di explícitamente que la causa concreta no está verificada.'}
@@ -619,8 +625,9 @@ async function relanzar(){
   const cola = ['_mercado',
     ...D.mercado.sectores.filter(s => !excluido(s.ticker) && s.lectura?.nivel && s.lectura.nivel!=='neutro').map(s => s.ticker),
     ...D.oportunidades.filter(o => o.radar==='principal' && !excluido(o.ticker)).slice(0,6).map(o => o.ticker),
+    ...Object.values(SEG).map(x => x.ticker),
     ...Object.values(CART).filter(p => p.estado==='abierta').map(p => p.ticker)];
-  const lista = [...new Set(cola)].filter(t => !frescas(t) && (t==='_mercado' || item(t)));
+  const lista = [...new Set(cola)].filter(t => !frescas(t) && (t==='_mercado' || item(t) || UX[t]));
   if (!lista.length) { toast('Todo está analizado en los últimos 5 días.'); relanzando = false; return; }
   const est = {}; lista.forEach(t => est[t] = 'pendiente');
   const pinta = () => { if (prog) prog.innerHTML = `<div class="hint">Analizando ${lista.length} elementos (2 a la vez, cada uno puede tardar 30-90 s; puedes seguir usando la app):</div>` + lista.map(t => `<div>${est[t]==='ok'?'✅':est[t]==='error'?'⚠️':est[t]==='en curso'?'⏳':'·'} ${esc(t==='_mercado'?'Lectura del mercado':nombreDe(t))} <span class="hint">${est[t]}</span></div>`).join(''); };
@@ -685,7 +692,8 @@ async function abrirDetalle(t){
     <div class="hint">${i.tipo==='accion'?esc(i.sector||'')+' · '+esc(i.region):i.tipo==='sector'?'Sector · datos del ETF de EE. UU. (historia desde '+i.historia_desde+')':i.tipo==='ucits'?'ETF comprable en Europa · sector '+esc(i.sector):i.tipo==='indice'?'Índice de referencia':'Indicador de contexto'} · último dato ${esc(i.fecha)}${i.comprable?' · comprable: '+esc(i.comprable)+(i.isin?' ('+esc(i.isin)+')':''):''}</div></div>
     ${i.tipo!=='contexto' && db ? `<button class="btn sm" data-anadir="${esc(i.ucits?i.ucits.ticker:i.ticker)}">Añadir a cartera</button>` : ''}
     ${i.tipo!=='contexto' && i.tipo!=='ucits' && db && sample ? `<button class="btn sm" data-analizar="${esc(i.ticker)}">${FICHAS[fid(i.ticker)]?'Actualizar análisis':'Analizar con Claude'}</button>` : ''}
-    ${(i.tipo==='accion'||i.tipo==='sector') && db ? `<button class="btn sm ghost peligro" data-excluir="${esc(i.ticker)}">No me interesa</button>` : ''}
+    ${i.tipo==='accion' && db ? (sigo(i.ticker) ? `<button class="btn sm ghost" data-noseguir="${esc(i.ticker)}">Dejar de seguir</button>` : `<button class="btn sm" data-seguir="${esc(i.ticker)}">★ Seguir</button>`) : ''}
+    ${(i.tipo==='accion'||i.tipo==='sector') && db && !sigo(i.ticker) ? `<button class="btn sm ghost peligro" data-excluir="${esc(i.ticker)}">No me interesa</button>` : ''}
     <button class="cerrar" data-cerrar aria-label="Cerrar">×</button>`;
   const kp = (k, v, s='') => `<div class="kpi" style="cursor:default"><div class="l">${k}</div><div class="v" style="font-size:22px">${v}</div><div class="s">${s}</div></div>`;
   let h = `<div class="g g-kpi">${kp('Precio', num(i.precio, i.precio<10?4:2), esc(i.moneda))}${kp('vs nivel habitual', pct(i.desc,1,false), 'nivel habitual (P80): '+num(i.p80))}${kp('1 mes', pct(i.var_1m,1,false))}${kp('1 año', pct(i.var_1a,1,false))}${kp('Rango del año', num(i.min_1a,0)+' – '+num(i.max_1a,0), esc(i.moneda))}${kp('Volatilidad', num(i.volatilidad,0)+'%', 'cuánto se mueve en un año normal')}</div>`;
