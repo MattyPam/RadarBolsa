@@ -792,14 +792,14 @@ async function abrirDetalle(t){
 function puntos(){
   const {s, r, desde, hasta} = detEstado; if (!s) return [];
   const N = {'1M':22,'3M':64,'6M':127,'1A':253,'2A':99999};
-  const largo = () => [...(s.w||[]).map(x => [x[0], x[1], null]), ...s.d];
+  const largo = () => [...(s.w||[]).map(x => [x[0], x[1], null]), ...s.d.filter((x,i) => (s.d.length-1-i) % 5 === 0)];  // todo semanal: eje proporcional
   if (r==='3A') { const d0 = sumaDias(s.d[s.d.length-1][0], -3*365); return largo().filter(x => x[0] >= d0); }
   if (r==='5A') { const d0 = sumaDias(s.d[s.d.length-1][0], -5*365); return largo().filter(x => x[0] >= d0); }
   if (r && r!=='Máx') return s.d.slice(-N[r]);
   if (r==='Máx') return s.m.map(x => [x[0], x[1], null]);
   const d0 = desde || '1900-01-01', d1 = hasta || '2999-12-31';
   if (d0 >= s.d[0][0]) return s.d.filter(x => x[0]>=d0 && x[0]<=d1);
-  if (s.w && s.w.length && d0 >= s.w[0][0]) return [...s.w.map(x => [x[0], x[1], null]), ...s.d].filter(x => x[0]>=d0 && x[0]<=d1);
+  if (s.w && s.w.length && d0 >= s.w[0][0]) return [...s.w.map(x => [x[0], x[1], null]), ...s.d.filter((x,i) => (s.d.length-1-i) % 5 === 0)].filter(x => x[0]>=d0 && x[0]<=d1);
   return s.m.filter(x => x[0]>=d0.slice(0,7) && x[0]<=d1.slice(0,7)).map(x => [x[0], x[1], null]);
 }
 function dibujar(){
