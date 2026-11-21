@@ -12,19 +12,27 @@
       "invalida": "Que los grandes clientes (Microsoft, Alphabet, Amazon, Meta) recorten sus previsiones de inversión para 2027.",
       "abogado_del_diablo": "La estadística del panel muestra que, tras caídas ≥20%, este sector solo estaba más alto 6 meses después en un 60% de los casos, peor que comprar cualquier día, y con un escenario malo de −40%. Las caídas en este sector tienden a continuar más de lo que parece.",
       "conclusion": "Es el producto con más potencial de rebote, pero también el más arriesgado del panel. Si se entra, mejor con una parte pequeña, por tramos y con un horizonte de 12 meses o más, no de 1 a 3 meses. Comprable en Europa: VanEck Semiconductor UCITS ETF.",
-      "fuentes": ["https://pro.thestreet.com/market-commentary/dow-peak-quickly-turns-to-brutal-selloff-as-investors-run", "https://www.webull.com/news/15934389224075264"]
+      "fuentes": [
+        "https://pro.thestreet.com/market-commentary/dow-peak-quickly-turns-to-brutal-selloff-as-investors-run",
+        "https://www.webull.com/news/15934389224075264"
+      ]
     },
     {
       "ticker": "NVDA",
       "nombre": "Nvidia",
       "negocio": "Diseña los procesadores (GPU) y redes que se usan para entrenar y ejecutar modelos de IA. En el último trimestre, el 93% de sus ingresos vino de centros de datos, con márgenes brutos de alrededor del 75%: es un casi monopolio con mucho poder de precio.",
-      "por_que_cae": "Dos golpes encadenados: la venta general de IA y la dimisión inmediata de su fundador y CEO, Jensen Huang, el 12/11. Le sustituye de forma interina la directora financiera, Colette Kress. Además hay nuevas restricciones a exportar chips.",
+      "por_que_cae": "Dos golpes encadenados: la venta general de IA y la dimisión inmediata de su fundador y CEO, Jensen Huang, el 12/11. Le sustituye de forma interina la directora financiera, Colette Kress. Además hay nuevas restricciones a exportar chips. Además, según los datos del panel, el viernes 20/11 cayó otro −14% (hasta ~125 $); a la hora de este análisis no he encontrado la causa en las noticias: hay que confirmarla antes de decidir nada.",
       "riesgo": "Riesgo de liderazgo: Huang era la cara de la estrategia y de la relación con los grandes clientes, y no está claro quién lo sustituirá. Riesgo de concentración: depende de pocos clientes enormes que también diseñan sus propios chips. Riesgo político: China y las exportaciones.",
       "oportunidad": "El negocio no se ha frenado. Resultados del 17/11: ingresos de 115.800 M$ (+103% interanual), previsión de 130.000 M$ para el trimestre siguiente (por encima de lo esperado) y 150.000 M$ más para recomprar acciones. Cotiza a unas 12 veces los beneficios esperados, el nivel más bajo desde 2012.",
       "invalida": "Un sustituto de CEO débil o una salida de talento clave; recortes de pedidos de los grandes clientes; o que la caída del margen previsto (71–72% el próximo trimestre) se convierta en tendencia.",
       "abogado_del_diablo": "Un PER bajo en una empresa cíclica a veces significa que los beneficios están en máximos y van a bajar, no que la acción esté barata. Los inventarios han subido por encima de su media, lo que puede anticipar una desaceleración.",
       "conclusion": "Es un caso claro de \"empresa excelente, momento incierto\". Si el objetivo es exponerse a la IA, el ETF de semiconductores diversifica el riesgo del CEO. Como empresa suelta, solo con una parte pequeña y aceptando caídas de otro 30–50% en el camino.",
-      "fuentes": ["https://www.constellationr.com/insights/news/nvidia-posts-strong-q3-ups-q4-outlook-amid-huang-resignation", "https://stockstory.org/us/stocks/nasdaq/nvda/news/earnings/nvidia-reports-strong-q3-but-inventory-levels-increase", "https://www.khaleejtimes.com/global-ai-stocks-sink-as-nvidia-ceos-exit-deepens-sector-selloff", "https://www.earningswhispers.com/article/NVDA/r2919"]
+      "fuentes": [
+        "https://www.constellationr.com/insights/news/nvidia-posts-strong-q3-ups-q4-outlook-amid-huang-resignation",
+        "https://stockstory.org/us/stocks/nasdaq/nvda/news/earnings/nvidia-reports-strong-q3-but-inventory-levels-increase",
+        "https://www.khaleejtimes.com/global-ai-stocks-sink-as-nvidia-ceos-exit-deepens-sector-selloff",
+        "https://www.earningswhispers.com/article/NVDA/r2919"
+      ]
     },
     {
       "ticker": "MU",
@@ -36,7 +44,11 @@
       "invalida": "Caída de los precios de contrato de la memoria DRAM/HBM o una previsión de ingresos a la baja.",
       "abogado_del_diablo": "En las empresas de memoria, la acción suele caer antes que los beneficios: cuando los resultados empiezan a empeorar, la acción ya ha bajado mucho, y aun así puede seguir bajando. Tras caídas ≥40%, solo estaba más alta 6 meses después en el 56% de los casos.",
       "conclusion": "No encaja con un perfil que busca diversificar y no vigilar a diario. Mejor tener la exposición a memoria a través del ETF de semiconductores.",
-      "fuentes": ["https://www.trefis.com/stock/mu/articles/623345/what-sent-micron-stock-lower/2026-11-06", "https://www.tikr.com/blog/micron-lost-17-in-a-day-its-35-billion-buyback-can-start-december-9", "https://kalkine.ca/news/technology/why-did-a-700-drop-hit-micron-nasdaqmu-as-memory-stocks-unwound-on-heavy-activity"]
+      "fuentes": [
+        "https://www.trefis.com/stock/mu/articles/623345/what-sent-micron-stock-lower/2026-11-06",
+        "https://www.tikr.com/blog/micron-lost-17-in-a-day-its-35-billion-buyback-can-start-december-9",
+        "https://kalkine.ca/news/technology/why-did-a-700-drop-hit-micron-nasdaqmu-as-memory-stocks-unwound-on-heavy-activity"
+      ]
     },
     {
       "ticker": "GOOGL",
@@ -48,7 +60,10 @@
       "invalida": "Que el buscador pase a crecer a un dígito durante varios trimestres, o que la inversión en IA siga subiendo sin que se acelere Google Cloud.",
       "abogado_del_diablo": "El mercado ya no premia el crecimiento si la caja generada es negativa. Mientras dure el ciclo de inversión, puede seguir penalizada aunque el negocio crezca.",
       "conclusion": "De las tecnológicas grandes, es de las que tiene un negocio principal más rentable y una estadística histórica más favorable. Es buena candidata para vigilar en los próximos resultados (finales de enero o febrero).",
-      "fuentes": ["https://www.trefis.com/stock/googl/articles2/621527/what-sent-alphabet-stock-lower/2026-10-30", "https://www.fool.com/investing/2026/10/29/is-ai-killing-google-s-golden-goose/"]
+      "fuentes": [
+        "https://www.trefis.com/stock/googl/articles2/621527/what-sent-alphabet-stock-lower/2026-10-30",
+        "https://www.fool.com/investing/2026/10/29/is-ai-killing-google-s-golden-goose/"
+      ]
     },
     {
       "ticker": "NKE",
@@ -60,7 +75,11 @@
       "invalida": "Más trimestres de caída de ventas en China o de margen sin señales de recuperación en producto.",
       "abogado_del_diablo": "\"Ha caído mucho\" no es una razón para comprar: tras caídas ≥40%, su mediana a 6 meses fue prácticamente 0. Las recuperaciones de marcas de consumo suelen tardar años y muchas no llegan a completarse.",
       "conclusion": "Es una apuesta de recuperación a largo plazo (2 años o más), no una oportunidad de 1 a 12 meses. Es mejor esperar a ver en los resultados que las ventas vuelven a crecer.",
-      "fuentes": ["https://fashionunited.com/news/business/nike-ceo-elliott-hill-reportedly-rallies-staff-after-investor-day-fails-to-lift-shares/2026111975852", "https://www.xtb.com/en/market-analysis/nike-slides-after-earnings-shares-hit-a-12-year-low", "https://frontofficesports.com/article/wall-street-isnt-buying-nikes-turnaround-story-yet/"]
+      "fuentes": [
+        "https://fashionunited.com/news/business/nike-ceo-elliott-hill-reportedly-rallies-staff-after-investor-day-fails-to-lift-shares/2026111975852",
+        "https://www.xtb.com/en/market-analysis/nike-slides-after-earnings-shares-hit-a-12-year-low",
+        "https://frontofficesports.com/article/wall-street-isnt-buying-nikes-turnaround-story-yet/"
+      ]
     },
     {
       "ticker": "NOVO-B.CO",
@@ -72,7 +91,10 @@
       "invalida": "Más fracasos en ensayos clínicos o una pérdida de cuota acelerada frente a Lilly.",
       "abogado_del_diablo": "Una empresa con ventas en descenso y cuyo valor depende de un solo medicamento no es una \"caída temporal\": es un cambio de ciclo. Puede quedarse barata mucho tiempo.",
       "conclusion": "Tiene un perfil de valor con riesgo concreto y difícil de juzgar sin conocimientos del sector farmacéutico. Para tener exposición a salud, el ETF sectorial diversifica entre muchas farmacéuticas.",
-      "fuentes": ["https://www.yahoo.com/news/articles/novo-nordisk-warns-2026-sales-165936126.html", "https://www.bnnbloomberg.ca/business/company-news/2026/09/21/wegovy-maker-novo-shares-slump-as-management-grilled-on-pricing-ma"]
+      "fuentes": [
+        "https://www.yahoo.com/news/articles/novo-nordisk-warns-2026-sales-165936126.html",
+        "https://www.bnnbloomberg.ca/business/company-news/2026/09/21/wegovy-maker-novo-shares-slump-as-management-grilled-on-pricing-ma"
+      ]
     },
     {
       "ticker": "MC.PA",
@@ -84,7 +106,11 @@
       "invalida": "Otro trimestre con la moda y la marroquinería en negativo y sin mejora en China.",
       "abogado_del_diablo": "Su estadística es la peor del panel: tras caídas ≥30%, solo estaba más alta 6 meses después en el 25% de los casos, con mediana negativa. Sus caídas han tendido a prolongarse.",
       "conclusion": "No hay señal de suelo todavía. Es mejor esperar a que lo confirmen los resultados de enero.",
-      "fuentes": ["https://www.retail-insight-network.com/?p=133460", "https://www.rte.ie/news/business/2026/0414/1568088-lvmh-quarterly-sales-fall/", "https://www.modaes.com/global/companies/lvmh-loses-market-value-and-falls-out-of-the-top-ten-in-europe-as-the-luxury-market-slows"]
+      "fuentes": [
+        "https://www.retail-insight-network.com/?p=133460",
+        "https://www.rte.ie/news/business/2026/0414/1568088-lvmh-quarterly-sales-fall/",
+        "https://www.modaes.com/global/companies/lvmh-loses-market-value-and-falls-out-of-the-top-ten-in-europe-as-the-luxury-market-slows"
+      ]
     }
   ]
 }

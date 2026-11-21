@@ -246,7 +246,7 @@ function drawRanking(){
   const vals = items.map(e=>e[rankMetric]);
   charts.push(new Chart($('#cRank'), {type:'bar',
     data:{labels:items.map(e=>e.nombre), datasets:[{data:vals, backgroundColor:vals.map(v=>v<0?css('--neg'):css('--series-1')), borderRadius:4, barThickness:16}]},
-    options:{indexAxis:'y', maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.raw>0?'+':''}${c.raw.toFixed(1)}%`}}},
+    options:{animation:false, indexAxis:'y', maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.raw>0?'+':''}${c.raw.toFixed(1)}%`}}},
       scales:{x:{grid:{color:css('--grid')}, ticks:{color:css('--text-secondary'), callback:v=>v+'%'}}, y:{grid:{display:false}, ticks:{color:css('--text-primary')}}},
       onClick:(e,els)=>{ if(els.length) detalle(items[els[0].index].ticker); }}}));
 }
@@ -343,7 +343,7 @@ function pintar(s, v, e){
   } else {
     data = {labels, datasets:[{data:vals, borderColor:css('--series-1'), borderWidth:2, pointRadius:0, pointHoverRadius:5, tension:0.1, fill:false}]};
   }
-  detChart = new Chart($('#cDet'), {type:tipo, data, options:{maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
+  detChart = new Chart($('#cDet'), {type:tipo, data, options:{animation:false, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
     plugins:{legend:{display:false}, title:{display:true, text: v==='sem'?`${e.nombre} · variación diaria (%)`:`${e.nombre} · precio`, color:css('--text-primary'), align:'start'},
       tooltip:{callbacks:{label:c=> v==='sem' ? `${c.raw>0?'+':''}${c.raw.toFixed(2)}%` : `${num(c.raw)}${chg[c.dataIndex]!==null?`  (${chg[c.dataIndex]>0?'+':''}${chg[c.dataIndex].toFixed(2)}%)`:''}`}}},
     scales:{x:{grid:{display:false}, ticks:{color:css('--text-secondary'), maxTicksLimit:8, maxRotation:0}},
