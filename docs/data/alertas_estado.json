@@ -1,0 +1,32 @@
+{
+ "fecha": "2026-11-21",
+ "claves": [
+  "AMD|max",
+  "ASML.AS|max",
+  "AVGO|max",
+  "EIMI.L|5d",
+  "EIMI.L|max",
+  "EUNL.DE|5d",
+  "GOOGL|max",
+  "MC.PA|max",
+  "META|max",
+  "MU|max",
+  "NKE|max",
+  "NOVO-B.CO|max",
+  "NVDA|max",
+  "PLTR|max",
+  "SMH|max",
+  "TSLA|max",
+  "TSM|max",
+  "XLC|max",
+  "XLI|max",
+  "XLK|max",
+  "^GSPC|5d",
+  "^GSPC|max",
+  "^IBEX|5d",
+  "^NDX|5d",
+  "^NDX|max",
+  "^STOXX50E|5d",
+  "^STOXX|5d"
+ ]
+}
