@@ -1,101 +1,167 @@
 # =====================================================================
-#  RadarBolsa · parámetros
-#  Este es el único fichero que hace falta tocar para cambiar qué se
-#  vigila, los umbrales de alerta o el plan de inversión por tramos.
-#  Los tickers son los de Yahoo Finance (fuente de los datos).
+#  RadarBolsa · parámetros del motor de datos (GitHub Actions)
+#  Tickers de Yahoo Finance. Las exclusiones y la cartera se gestionan
+#  desde la app; config/cartera.yaml lo sincroniza Claude cada día.
 # =====================================================================
 
-# --- Umbrales de alerta (en %, valores negativos = caída) -------------
-alertas:
-  indice_5d: -5          # índice amplio: caída en 5 sesiones
-  indice_desde_max: -10  # índice amplio: caída desde máximo de 52 semanas
-  sector_desde_max: -15  # sector: caída desde máximo de 52 semanas
-  empresa_desde_max: -25 # empresa: caída desde máximo de 52 semanas
+# Referencia de "nivel habitual": percentil del último año (252 sesiones)
+referencia_percentil: 80
 
-# --- Plan de despliegue por tramos -----------------------------------
-# Se mide sobre la referencia (MSCI World en euros) y su caída desde el
-# máximo de 52 semanas. Cada tramo indica el % del capital disponible.
-tramos:
-  referencia: EUNL.DE
-  capital: 75000
-  niveles:
-    - {caida: -10, peso: 25}
-    - {caida: -15, peso: 25}
-    - {caida: -20, peso: 25}
-    - {caida: -30, peso: 25}
+# --- Alertas por email (descuento vs P80, en %) -----------------------
+alertas:
+  indice_5d: -5
+  indice_vs_p80: -8
+  sector_vs_p80: -12
+
+# --- Radar de oportunidades -------------------------------------------
+radar:
+  accion_min_descuento: -12   # la acción debe estar al menos un 12% por debajo de su P80
+  etf_min_descuento: -6       # sectores / índices
+  min_casos: 8                # precedentes mínimos para fiarse de la estadística
+  max_por_sector: 3           # diversificación en la lista de acciones
+  n_acciones: 30              # cuántas acciones pasan al radar con ficha completa
 
 # --- Índices de referencia --------------------------------------------
-# ticker: serie que se analiza · comprable: ETF UCITS que se puede comprar
-# en Europa (verificar ISIN en Trade Republic antes de comprar).
 indices:
-  - {ticker: EUNL.DE,   nombre: "MSCI World (EUR)",        comprable: "iShares Core MSCI World UCITS ETF (Acc)", isin: IE00B4L5Y983}
-  - {ticker: ^GSPC,     nombre: "S&P 500 (EE. UU.)",       comprable: "iShares Core S&P 500 UCITS ETF (Acc)",    isin: IE00B5BMR087}
-  - {ticker: ^NDX,      nombre: "Nasdaq 100 (tecnológicas EE. UU.)", comprable: "iShares Nasdaq 100 UCITS ETF (Acc)", isin: IE00B53SZB19}
-  - {ticker: ^STOXX,    nombre: "STOXX Europe 600",        comprable: "iShares STOXX Europe 600 UCITS ETF (DE)", isin: DE0002635307}
-  - {ticker: ^STOXX50E, nombre: "Euro Stoxx 50",           comprable: "iShares Core EURO STOXX 50 UCITS ETF (Acc)", isin: IE00B53L3W79}
-  - {ticker: ^IBEX,     nombre: "IBEX 35",                 comprable: "ETF IBEX 35 (buscar en Trade Republic)", isin: ""}
-  - {ticker: EIMI.L,    nombre: "Mercados emergentes",     comprable: "iShares Core MSCI EM IMI UCITS ETF (Acc)", isin: IE00BKM4GZ66}
+  - {ticker: EUNL.DE,   nombre: "MSCI World (EUR)",  comprable: "iShares Core MSCI World UCITS ETF (Acc)", isin: IE00B4L5Y983}
+  - {ticker: ^GSPC,     nombre: "S&P 500",           comprable: "iShares Core S&P 500 UCITS ETF (Acc)",    isin: IE00B5BMR087}
+  - {ticker: ^NDX,      nombre: "Nasdaq 100",        comprable: "iShares Nasdaq 100 UCITS ETF (Acc)",      isin: IE00B53SZB19}
+  - {ticker: ^STOXX,    nombre: "STOXX Europe 600",  comprable: "iShares STOXX Europe 600 UCITS ETF (DE)", isin: DE0002635307}
+  - {ticker: ^STOXX50E, nombre: "Euro Stoxx 50",     comprable: "iShares Core EURO STOXX 50 UCITS ETF (Acc)", isin: IE00B53L3W79}
+  - {ticker: ^IBEX,     nombre: "IBEX 35",           comprable: "ETF IBEX 35 (buscar en Trade Republic)", isin: ""}
+  - {ticker: EIMI.L,    nombre: "Emergentes",        comprable: "iShares Core MSCI EM IMI UCITS ETF (Acc)", isin: IE00BKM4GZ66, moneda: USD}
 
-# Indicadores de contexto (no se compran; ayudan a leer el momento)
 contexto:
-  - {ticker: ^VIX,    nombre: "VIX (índice del miedo)"}
-  - {ticker: 6E=F,    nombre: "Euro / dólar (futuro)"}
-  - {ticker: GC=F,    nombre: "Oro (USD/onza)"}
-  - {ticker: BZ=F,    nombre: "Petróleo Brent (USD)"}
+  - {ticker: ^VIX,  nombre: "VIX · miedo"}
+  - {ticker: 6E=F,  nombre: "Euro / dólar", moneda: USD}
+  - {ticker: GC=F,  nombre: "Oro"}
+  - {ticker: BZ=F,  nombre: "Brent"}
 
-# --- Sectores ---------------------------------------------------------
-# ticker: ETF sectorial de EE. UU. (historia desde 1998 → estadística
-# más robusta; NO comprable desde la UE).
-# ticker_ucits: versión mundial comprable en Europa (Xtrackers MSCI World
-# sector, cotiza en Xetra). Verificar ISIN en Trade Republic.
+# --- Sectores: ETF de EE. UU. (estadística desde 1998) + UCITS comprable
 sectores:
-  - {ticker: XLK,  nombre: "Tecnología",              ticker_ucits: XDWT.DE, isin: IE00BM67HT60}
-  - {ticker: SMH,  nombre: "Semiconductores",         ticker_ucits: VVSM.DE, isin: IE00BMC38736, comprable: "VanEck Semiconductor UCITS ETF"}
-  - {ticker: XLC,  nombre: "Comunicación (Google, Meta…)", ticker_ucits: XWTS.DE, isin: IE00BM67HR47}
-  - {ticker: XLY,  nombre: "Consumo discrecional",    ticker_ucits: XDWC.DE, isin: IE00BM67HP23}
-  - {ticker: XLP,  nombre: "Consumo básico",          ticker_ucits: XDWS.DE, isin: IE00BM67HN09}
-  - {ticker: XLV,  nombre: "Salud",                   ticker_ucits: XDWH.DE, isin: IE00BM67HK77}
-  - {ticker: XLF,  nombre: "Financiero",              ticker_ucits: XDWF.DE, isin: IE00BM67HL84}
-  - {ticker: XLI,  nombre: "Industria",               ticker_ucits: XDWI.DE, isin: IE00BM67HV82}
-  - {ticker: XLE,  nombre: "Energía",                 ticker_ucits: XDW0.DE, isin: IE00BM67HM91}
-  - {ticker: XLB,  nombre: "Materiales",              ticker_ucits: XDWM.DE, isin: IE00BM67HS53}
-  - {ticker: XLU,  nombre: "Utilities (eléctricas…)", ticker_ucits: XDWU.DE, isin: IE00BM67HQ30}
-  - {ticker: XLRE, nombre: "Inmobiliario",            ticker_ucits: "",      isin: ""}
+  - {ticker: XLK,  nombre: "Tecnología",           ticker_ucits: XDWT.DE, isin: IE00BM67HT60}
+  - {ticker: SMH,  nombre: "Semiconductores",      ticker_ucits: VVSM.DE, isin: IE00BMC38736, comprable: "VanEck Semiconductor UCITS ETF"}
+  - {ticker: XLC,  nombre: "Comunicación",         ticker_ucits: XWTS.DE, isin: IE00BM67HR47}
+  - {ticker: XLY,  nombre: "Consumo discrecional", ticker_ucits: XDWC.DE, isin: IE00BM67HP23}
+  - {ticker: XLP,  nombre: "Consumo básico",       ticker_ucits: XDWS.DE, isin: IE00BM67HN09}
+  - {ticker: XLV,  nombre: "Salud",                ticker_ucits: XDWH.DE, isin: IE00BM67HK77}
+  - {ticker: XLF,  nombre: "Financiero",           ticker_ucits: XDWF.DE, isin: IE00BM67HL84}
+  - {ticker: XLI,  nombre: "Industria",            ticker_ucits: XDWI.DE, isin: IE00BM67HV82}
+  - {ticker: XLE,  nombre: "Energía",              ticker_ucits: XDW0.DE, isin: IE00BM67HM91}
+  - {ticker: XLB,  nombre: "Materiales",           ticker_ucits: XDWM.DE, isin: IE00BM67HS53}
+  - {ticker: XLU,  nombre: "Utilities",            ticker_ucits: XDWU.DE, isin: IE00BM67HQ30}
+  - {ticker: XLRE, nombre: "Inmobiliario",         ticker_ucits: "",      isin: ""}
 
-# --- Empresas vigiladas -----------------------------------------------
-# Añade o quita libremente. sector = uno de los nombres de arriba.
-empresas:
-  - {ticker: NVDA,    nombre: "Nvidia",            sector: "Semiconductores"}
-  - {ticker: AMD,     nombre: "AMD",               sector: "Semiconductores"}
-  - {ticker: AVGO,    nombre: "Broadcom",          sector: "Semiconductores"}
-  - {ticker: TSM,     nombre: "TSMC",              sector: "Semiconductores"}
-  - {ticker: ASML.AS, nombre: "ASML",              sector: "Semiconductores"}
-  - {ticker: MU,      nombre: "Micron",            sector: "Semiconductores"}
-  - {ticker: MSFT,    nombre: "Microsoft",         sector: "Tecnología"}
-  - {ticker: AAPL,    nombre: "Apple",             sector: "Tecnología"}
-  - {ticker: SAP.DE,  nombre: "SAP",               sector: "Tecnología"}
-  - {ticker: PLTR,    nombre: "Palantir",          sector: "Tecnología"}
-  - {ticker: GOOGL,   nombre: "Alphabet (Google)", sector: "Comunicación (Google, Meta…)"}
-  - {ticker: META,    nombre: "Meta",              sector: "Comunicación (Google, Meta…)"}
-  - {ticker: AMZN,    nombre: "Amazon",            sector: "Consumo discrecional"}
-  - {ticker: TSLA,    nombre: "Tesla",             sector: "Consumo discrecional"}
-  - {ticker: NKE,     nombre: "Nike",              sector: "Consumo discrecional"}
-  - {ticker: MC.PA,   nombre: "LVMH",              sector: "Consumo discrecional"}
-  - {ticker: ITX.MC,  nombre: "Inditex",           sector: "Consumo discrecional"}
-  - {ticker: MCD,     nombre: "McDonald's",        sector: "Consumo discrecional"}
-  - {ticker: KO,      nombre: "Coca-Cola",         sector: "Consumo básico"}
-  - {ticker: PG,      nombre: "Procter & Gamble",  sector: "Consumo básico"}
-  - {ticker: NESN.SW, nombre: "Nestlé",            sector: "Consumo básico"}
-  - {ticker: OR.PA,   nombre: "L'Oréal",           sector: "Consumo básico"}
-  - {ticker: LLY,     nombre: "Eli Lilly",         sector: "Salud"}
-  - {ticker: NOVO-B.CO, nombre: "Novo Nordisk",    sector: "Salud"}
-  - {ticker: UNH,     nombre: "UnitedHealth",      sector: "Salud"}
-  - {ticker: JNJ,     nombre: "Johnson & Johnson", sector: "Salud"}
-  - {ticker: JPM,     nombre: "JPMorgan",          sector: "Financiero"}
-  - {ticker: V,       nombre: "Visa",              sector: "Financiero"}
-  - {ticker: SAN.MC,  nombre: "Banco Santander",   sector: "Financiero"}
-  - {ticker: SIE.DE,  nombre: "Siemens",           sector: "Industria"}
-  - {ticker: AIR.PA,  nombre: "Airbus",            sector: "Industria"}
-  - {ticker: XOM,     nombre: "ExxonMobil",        sector: "Energía"}
-  - {ticker: TTE.PA,  nombre: "TotalEnergies",     sector: "Energía"}
-  - {ticker: IBE.MC,  nombre: "Iberdrola",         sector: "Utilities (eléctricas…)"}
+# --- Universo de acciones ---------------------------------------------
+# EE. UU.: todo el S&P 500 (se descarga la lista cada día) + estos extra.
+extra_us:
+  - {ticker: TSM,  nombre: "TSMC",        sector: "Semiconductores"}
+  - {ticker: ARM,  nombre: "Arm Holdings", sector: "Semiconductores"}
+  - {ticker: SHOP, nombre: "Shopify",     sector: "Tecnología"}
+  - {ticker: SPOT, nombre: "Spotify",     sector: "Comunicación"}
+
+# Europa: grandes compañías (moneda según bolsa).
+europa:
+  - {ticker: ASML.AS,  nombre: "ASML",               sector: "Semiconductores"}
+  - {ticker: IFX.DE,   nombre: "Infineon",           sector: "Semiconductores"}
+  - {ticker: STMPA.PA, nombre: "STMicroelectronics", sector: "Semiconductores"}
+  - {ticker: SAP.DE,   nombre: "SAP",                sector: "Tecnología"}
+  - {ticker: CAP.PA,   nombre: "Capgemini",          sector: "Tecnología"}
+  - {ticker: DSY.PA,   nombre: "Dassault Systèmes",  sector: "Tecnología"}
+  - {ticker: ADYEN.AS, nombre: "Adyen",              sector: "Financiero"}
+  - {ticker: ERIC-B.ST, nombre: "Ericsson",          sector: "Tecnología"}
+  - {ticker: NOKIA.HE, nombre: "Nokia",              sector: "Tecnología"}
+  - {ticker: DTE.DE,   nombre: "Deutsche Telekom",   sector: "Comunicación"}
+  - {ticker: TEF.MC,   nombre: "Telefónica",         sector: "Comunicación"}
+  - {ticker: CLNX.MC,  nombre: "Cellnex",            sector: "Comunicación"}
+  - {ticker: PRX.AS,   nombre: "Prosus",             sector: "Consumo discrecional"}
+  - {ticker: UMG.AS,   nombre: "Universal Music",    sector: "Comunicación"}
+  - {ticker: REL.L,    nombre: "RELX",               sector: "Industria"}
+  - {ticker: MC.PA,    nombre: "LVMH",               sector: "Consumo discrecional"}
+  - {ticker: RMS.PA,   nombre: "Hermès",             sector: "Consumo discrecional"}
+  - {ticker: KER.PA,   nombre: "Kering",             sector: "Consumo discrecional"}
+  - {ticker: CFR.SW,   nombre: "Richemont",          sector: "Consumo discrecional"}
+  - {ticker: ITX.MC,   nombre: "Inditex",            sector: "Consumo discrecional"}
+  - {ticker: ADS.DE,   nombre: "Adidas",             sector: "Consumo discrecional"}
+  - {ticker: BMW.DE,   nombre: "BMW",                sector: "Consumo discrecional"}
+  - {ticker: MBG.DE,   nombre: "Mercedes-Benz",      sector: "Consumo discrecional"}
+  - {ticker: VOW3.DE,  nombre: "Volkswagen",         sector: "Consumo discrecional"}
+  - {ticker: STLAP.PA, nombre: "Stellantis",         sector: "Consumo discrecional"}
+  - {ticker: RACE.MI,  nombre: "Ferrari",            sector: "Consumo discrecional"}
+  - {ticker: EL.PA,    nombre: "EssilorLuxottica",   sector: "Salud"}
+  - {ticker: AMS.MC,   nombre: "Amadeus",            sector: "Tecnología"}
+  - {ticker: AENA.MC,  nombre: "Aena",               sector: "Industria"}
+  - {ticker: IAG.MC,   nombre: "IAG",                sector: "Industria"}
+  - {ticker: NESN.SW,  nombre: "Nestlé",             sector: "Consumo básico"}
+  - {ticker: OR.PA,    nombre: "L'Oréal",            sector: "Consumo básico"}
+  - {ticker: ULVR.L,   nombre: "Unilever",           sector: "Consumo básico"}
+  - {ticker: BN.PA,    nombre: "Danone",             sector: "Consumo básico"}
+  - {ticker: ABI.BR,   nombre: "AB InBev",           sector: "Consumo básico"}
+  - {ticker: HEIA.AS,  nombre: "Heineken",           sector: "Consumo básico"}
+  - {ticker: RI.PA,    nombre: "Pernod Ricard",      sector: "Consumo básico"}
+  - {ticker: DGE.L,    nombre: "Diageo",             sector: "Consumo básico"}
+  - {ticker: BATS.L,   nombre: "British American Tobacco", sector: "Consumo básico"}
+  - {ticker: AD.AS,    nombre: "Ahold Delhaize",     sector: "Consumo básico"}
+  - {ticker: NOVO-B.CO, nombre: "Novo Nordisk",      sector: "Salud"}
+  - {ticker: NOVN.SW,  nombre: "Novartis",           sector: "Salud"}
+  - {ticker: ROG.SW,   nombre: "Roche",              sector: "Salud"}
+  - {ticker: AZN.L,    nombre: "AstraZeneca",        sector: "Salud"}
+  - {ticker: GSK.L,    nombre: "GSK",                sector: "Salud"}
+  - {ticker: SAN.PA,   nombre: "Sanofi",             sector: "Salud"}
+  - {ticker: BAYN.DE,  nombre: "Bayer",              sector: "Salud"}
+  - {ticker: MRK.DE,   nombre: "Merck KGaA",         sector: "Salud"}
+  - {ticker: LONN.SW,  nombre: "Lonza",              sector: "Salud"}
+  - {ticker: UCB.BR,   nombre: "UCB",                sector: "Salud"}
+  - {ticker: PHIA.AS,  nombre: "Philips",            sector: "Salud"}
+  - {ticker: SAN.MC,   nombre: "Banco Santander",    sector: "Financiero"}
+  - {ticker: BBVA.MC,  nombre: "BBVA",               sector: "Financiero"}
+  - {ticker: CABK.MC,  nombre: "CaixaBank",          sector: "Financiero"}
+  - {ticker: BNP.PA,   nombre: "BNP Paribas",        sector: "Financiero"}
+  - {ticker: INGA.AS,  nombre: "ING",                sector: "Financiero"}
+  - {ticker: ISP.MI,   nombre: "Intesa Sanpaolo",    sector: "Financiero"}
+  - {ticker: UCG.MI,   nombre: "UniCredit",          sector: "Financiero"}
+  - {ticker: DBK.DE,   nombre: "Deutsche Bank",      sector: "Financiero"}
+  - {ticker: HSBA.L,   nombre: "HSBC",               sector: "Financiero"}
+  - {ticker: BARC.L,   nombre: "Barclays",           sector: "Financiero"}
+  - {ticker: UBSG.SW,  nombre: "UBS",                sector: "Financiero"}
+  - {ticker: NDA-FI.HE, nombre: "Nordea",            sector: "Financiero"}
+  - {ticker: ALV.DE,   nombre: "Allianz",            sector: "Financiero"}
+  - {ticker: MUV2.DE,  nombre: "Munich Re",          sector: "Financiero"}
+  - {ticker: CS.PA,    nombre: "AXA",                sector: "Financiero"}
+  - {ticker: ZURN.SW,  nombre: "Zurich Insurance",   sector: "Financiero"}
+  - {ticker: G.MI,     nombre: "Generali",           sector: "Financiero"}
+  - {ticker: DB1.DE,   nombre: "Deutsche Börse",     sector: "Financiero"}
+  - {ticker: LSEG.L,   nombre: "London Stock Exchange", sector: "Financiero"}
+  - {ticker: INVE-B.ST, nombre: "Investor AB",       sector: "Financiero"}
+  - {ticker: SIE.DE,   nombre: "Siemens",            sector: "Industria"}
+  - {ticker: AIR.PA,   nombre: "Airbus",             sector: "Industria"}
+  - {ticker: SAF.PA,   nombre: "Safran",             sector: "Industria"}
+  - {ticker: SU.PA,    nombre: "Schneider Electric", sector: "Industria"}
+  - {ticker: DG.PA,    nombre: "Vinci",              sector: "Industria"}
+  - {ticker: RHM.DE,   nombre: "Rheinmetall",        sector: "Industria"}
+  - {ticker: HO.PA,    nombre: "Thales",             sector: "Industria"}
+  - {ticker: RR.L,     nombre: "Rolls-Royce",        sector: "Industria"}
+  - {ticker: ABBN.SW,  nombre: "ABB",                sector: "Industria"}
+  - {ticker: DHL.DE,   nombre: "DHL Group",          sector: "Industria"}
+  - {ticker: DSV.CO,   nombre: "DSV",                sector: "Industria"}
+  - {ticker: VOLV-B.ST, nombre: "Volvo",             sector: "Industria"}
+  - {ticker: ATCO-A.ST, nombre: "Atlas Copco",       sector: "Industria"}
+  - {ticker: FER.MC,   nombre: "Ferrovial",          sector: "Industria"}
+  - {ticker: ACS.MC,   nombre: "ACS",                sector: "Industria"}
+  - {ticker: WKL.AS,   nombre: "Wolters Kluwer",     sector: "Industria"}
+  - {ticker: ENR.DE,   nombre: "Siemens Energy",     sector: "Industria"}
+  - {ticker: SHEL.L,   nombre: "Shell",              sector: "Energía"}
+  - {ticker: TTE.PA,   nombre: "TotalEnergies",      sector: "Energía"}
+  - {ticker: BP.L,     nombre: "BP",                 sector: "Energía"}
+  - {ticker: ENI.MI,   nombre: "Eni",                sector: "Energía"}
+  - {ticker: REP.MC,   nombre: "Repsol",             sector: "Energía"}
+  - {ticker: EQNR.OL,  nombre: "Equinor",            sector: "Energía"}
+  - {ticker: BAS.DE,   nombre: "BASF",               sector: "Materiales"}
+  - {ticker: AI.PA,    nombre: "Air Liquide",        sector: "Materiales"}
+  - {ticker: SIKA.SW,  nombre: "Sika",               sector: "Materiales"}
+  - {ticker: RIO.L,    nombre: "Rio Tinto",          sector: "Materiales"}
+  - {ticker: IBE.MC,   nombre: "Iberdrola",          sector: "Utilities"}
+  - {ticker: ENEL.MI,  nombre: "Enel",               sector: "Utilities"}
+  - {ticker: ENGI.PA,  nombre: "Engie",              sector: "Utilities"}
+  - {ticker: ELE.MC,   nombre: "Endesa",             sector: "Utilities"}
+  - {ticker: NG.L,     nombre: "National Grid",      sector: "Utilities"}
