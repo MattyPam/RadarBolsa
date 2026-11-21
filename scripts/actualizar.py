@@ -30,8 +30,11 @@ RAIZ = Path(__file__).resolve().parent.parent
 CONFIG = RAIZ / "config" / "universo.yaml"
 CARTERA = RAIZ / "config" / "cartera.yaml"
 SEGUIMIENTO = RAIZ / "config" / "seguimiento.yaml"
-SP500_CACHE = RAIZ / "config" / "sp500_cache.csv"
-SALIDA = RAIZ / "docs" / "data"
+# Todo lo generado va a salida/ y el workflow lo publica en la rama "datos" (se sobrescribe cada día)
+SALIDA = RAIZ / "salida"
+SP500_CACHE = SALIDA / "sp500_cache.csv"
+APP = SALIDA / "app"
+TROZO = 24000   # caracteres por trozo del paquete que descarga el botón "Actualizar"
 SERIES = SALIDA / "series"
 
 HORIZONTES = {"1m": 21, "3m": 63, "6m": 126, "12m": 252}
@@ -112,9 +115,10 @@ def sp500() -> list[dict]:
         df[["ticker", "nombre", "gics", "sub"]].to_csv(SP500_CACHE, index=False)
     except Exception as e:  # noqa: BLE001
         print(f"No se pudo leer el S&P 500 de Wikipedia ({e}); uso la copia guardada.")
-        if not SP500_CACHE.exists():
+        cache = SP500_CACHE if SP500_CACHE.exists() and SP500_CACHE.stat().st_size > 100 else RAIZ / "config" / "sp500_cache.csv"
+        if not cache.exists():
             return []
-        df = pd.read_csv(SP500_CACHE)
+        df = pd.read_csv(cache)
     out = []
     for _, f in df.iterrows():
         sector = GICS.get(f["gics"], f["gics"])
@@ -266,14 +270,20 @@ def metricas(s: pd.Series, p80: np.ndarray, hoy: str) -> dict:
     }
 
 
-def guardar_serie(ticker: str, s: pd.Series, p80: np.ndarray):
-    n = 5 * 252 + 5
-    d = s.iloc[-n:]
-    pp = p80[-n:]
+def guardar_serie(ticker: str, s: pd.Series, p80: np.ndarray, info: dict | None = None):
+    """Serie para los gráficos: diaria 2 años (con nivel habitual), semanal hasta 5 años
+    y mensual desde 2000. "i" lleva los datos del producto para poder abrir su detalle."""
+    n = 2 * 252 + 5
+    d, pp = s.iloc[-n:], p80[-n:]
+    ini_d = d.index[0]
+    sem = s[(s.index >= ini_d - pd.DateOffset(years=3)) & (s.index < ini_d)].resample("W-FRI").last().dropna()
     mensual = s.resample("ME").last().dropna()
     datos = {"t": ticker,
              "d": [[k.strftime("%Y-%m-%d"), sig(v), sig(q)] for (k, v), q in zip(d.items(), pp)],
+             "w": [[k.strftime("%Y-%m-%d"), sig(v)] for k, v in sem.items()],
              "m": [[k.strftime("%Y-%m"), sig(v)] for k, v in mensual.items()]}
+    if info:
+        datos["i"] = {k: v for k, v in info.items() if not k.startswith("_")}
     (SERIES / f"{nombre_fichero(ticker)}.json").write_text(json.dumps(datos, separators=(",", ":")),
                                                            encoding="utf-8")
 
@@ -314,7 +324,8 @@ def main():
     min_casos = radar.get("min_casos", 8)
     q = cfg.get("referencia_percentil", 80)
     SERIES.mkdir(parents=True, exist_ok=True)
-    for f in SERIES.glob("*.json"):
+    APP.mkdir(parents=True, exist_ok=True)
+    for f in list(SERIES.glob("*.json")) + list(APP.glob("*")):
         f.unlink()  # se regeneran cada día
     ahora = datetime.now(timezone.utc).astimezone(ZoneInfo("Europe/Madrid"))
     hoy = ahora.strftime("%Y-%m-%d")
@@ -374,8 +385,8 @@ def main():
                 it["ucits"] = {k: iu[k] for k in ("ticker", "nombre", "moneda", "precio", "fecha", "var_1d",
                                                   "var_5d", "var_1m", "var_1a", "desc", "p80", "historia_desde")}
                 it["ucits"]["isin"] = e.get("isin") or None
-                guardar_serie(tu, iu["_s"], iu["_p80"])
-        guardar_serie(it["ticker"], it.pop("_s"), it.pop("_p80"))
+                guardar_serie(tu, iu.pop("_s"), iu.pop("_p80"), iu)
+        guardar_serie(it["ticker"], it.pop("_s"), it.pop("_p80"), it)
         mercado[{"indice": "indices", "contexto": "contexto", "sector": "sectores"}[tipo]].append(it)
 
     # --- Acciones ----------------------------------------------------------
@@ -414,7 +425,7 @@ def main():
             continue
         x["radar"] = "principal" if x in elegidas else ("reserva" if x in reserva else None)
         x["fund"] = fundamentales(x["ticker"])
-        guardar_serie(x["ticker"], x.pop("_s"), x.pop("_p80"))
+        guardar_serie(x["ticker"], x.pop("_s"), x.pop("_p80"), x)
         if x["radar"]:
             oportunidades.append(x)
         else:
@@ -430,17 +441,17 @@ def main():
             continue
         it = calcular(t, {"nombre": t}, "accion")
         if it:
-            guardar_serie(t, it.pop("_s"), it.pop("_p80"))
             it["fund"] = fundamentales(t)
+            guardar_serie(t, it.pop("_s"), it.pop("_p80"), it)
             extra.append(it)
 
     universo = [[x["ticker"], x["nombre"], x.get("sector"), x["region"], x["moneda"], x["precio"],
                  x["desc"], x["var_5d"], x["var_1m"], x["var_1a"], x["lectura"]["nivel"],
                  x["lectura"].get("pct"), x["lectura"].get("base"), x["lectura"].get("n")]
                 for x in todas]
-    for x in todas:
-        x.pop("_s", None)
-        x.pop("_p80", None)
+    for x in todas:   # el resto del universo también tiene gráfico y estadística (sin fundamentales)
+        if "_s" in x:
+            guardar_serie(x["ticker"], x.pop("_s"), x.pop("_p80"), x)
 
     # --- Alertas -----------------------------------------------------------
     a = cfg.get("alertas", {})
@@ -461,7 +472,10 @@ def main():
                         "texto": f"{x['nombre']} entra en el radar ({x['desc']:+.1f}% bajo su nivel habitual)"})
 
     estado_f = SALIDA / "alertas_estado.json"
-    previas = set(json.loads(estado_f.read_text(encoding="utf-8")).get("claves", [])) if estado_f.exists() else set()
+    try:
+        previas = set(json.loads(estado_f.read_text(encoding="utf-8")).get("claves", []))
+    except Exception:  # noqa: BLE001  (primer día o fichero vacío)
+        previas = set()
     nuevas = [al for al in alertas if al["clave"] not in previas]
     estado_f.write_text(json.dumps({"fecha": hoy, "claves": sorted(al["clave"] for al in alertas)}), encoding="utf-8")
     nuevas_f = RAIZ / "alertas_nuevas.md"
@@ -486,6 +500,13 @@ def main():
                                          encoding="utf-8")
     (SALIDA / "universo.json").write_text(json.dumps(universo, ensure_ascii=False, separators=(",", ":")),
                                           encoding="utf-8")
+    # Paquete en trozos pequeños para el botón "Actualizar datos" de la app
+    paquete = json.dumps({"resumen": resumen, "universo": universo}, ensure_ascii=False, separators=(",", ":"))
+    trozos = [paquete[i:i + TROZO] for i in range(0, len(paquete), TROZO)]
+    for k, t in enumerate(trozos):
+        (APP / f"parte_{k}.txt").write_text(t, encoding="utf-8")
+    (APP / "manifest.json").write_text(json.dumps({"actualizado": resumen["actualizado"], "partes": len(trozos),
+                                                   "longitud": len(paquete)}), encoding="utf-8")
     print(f"OK · universo {len(todas)} · radar {len(oportunidades)} · alertas {len(alertas)} ({len(nuevas)} nuevas)")
 
 

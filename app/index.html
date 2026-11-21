@@ -186,7 +186,8 @@ textarea.inp{min-height:70px;resize:vertical}
 <body>
 <header>
   <div class="cab">
-    <h1><svg class="radar-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--acc)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l6-6"/><circle cx="16.5" cy="8.5" r="1.3" fill="currentColor"/></svg>RadarBolsa <small id="upd">cargando…</small></h1>
+    <h1 style="flex:0 0 auto"><svg class="radar-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--acc)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l6-6"/><circle cx="16.5" cy="8.5" r="1.3" fill="currentColor"/></svg>RadarBolsa <small id="upd">cargando…</small></h1>
+    <button class="btn sm" id="bActualizar" title="Descarga los últimos datos calculados (cada día laborable hacia las 11:30)">⟳ Actualizar datos</button>
     <nav class="tabs" id="tabs">
       <button class="tab on" data-t="mercado">Mercado</button>
       <button class="tab" data-t="oportunidades">Oportunidades</button>
@@ -267,14 +268,68 @@ async function cargar(){
   try {
     const [r1, r2] = await Promise.all([fetch('data/resumen.json'), fetch('data/universo.json')]);
     D = await r1.json(); U = r2.ok ? await r2.json() : [];
-  } catch(e) { $('#s-mercado').innerHTML = '<div class="card vacio">Todavía no hay datos. Se cargan cada día laborable hacia las 11:50.</div>'; $('#upd').textContent=''; return; }
+  } catch(e) { $('#s-mercado').innerHTML = '<div class="card vacio">Todavía no hay datos.</div>'; $('#upd').textContent=''; return; }
+  BASE_ACT = D.actualizado;
+  indexar();
+  pintar();
+  conectar();
+}
+let BASE_ACT = null, REMOTO = false;
+function indexar(){
+  for (const k in UX) delete UX[k];
+  for (const k in IDX) delete IDX[k];
   U.forEach(u => UX[u[0]] = u);
   const m = D.mercado;
   [...m.indices, ...m.contexto, ...m.sectores, ...D.oportunidades, ...(D.seguidos||[])].forEach(i => IDX[i.ticker] = i);
   m.sectores.forEach(s => { if (s.ucits) IDX[s.ucits.ticker] = {...s.ucits, tipo:'ucits', sector:s.nombre, lectura:null, padre:s.ticker}; });
   $('#upd').textContent = `datos ${D.actualizado.slice(8,10)}/${D.actualizado.slice(5,7)} ${D.actualizado.slice(11)} · ${D.n_universo} empresas revisadas`;
-  pintar();
-  conectar();
+}
+function aplicar(paquete, origen){
+  if (!paquete || !paquete.resumen || paquete.resumen.actualizado <= D.actualizado) return false;
+  D = paquete.resumen; U = paquete.universo || U; REMOTO = D.actualizado !== BASE_ACT;
+  for (const k in SERIE) delete SERIE[k];
+  indexar(); pintar();
+  return true;
+}
+// ---- descarga de datos frescos (GitHub, rama "datos") a través del conector Parallel Search
+const RAW = 'https://raw.githubusercontent.com/MattyPam/RadarBolsa/datos/';
+async function traer(rutas){
+  if (!mcp) throw new Error('sin_mcp');
+  const v = Date.now(), urls = rutas.map(r => RAW + r + '?v=' + v);
+  const r = await mcp.callTool('Parallel Search', 'web_fetch', {urls, full_content:true, allow_live_fetch:true, objective:'Descargar el fichero completo, sin resumir', session_id:SESION});
+  const res = (r.payload && r.payload.results) || [];
+  return urls.map(u => { const x = res.find(y => y.url === u) || res.find(y => (y.url||'').split('?')[0] === u.split('?')[0]); return x ? x.full_content : null; });
+}
+async function actualizarDatos(){
+  const b = $('#bActualizar');
+  if (!mcp) return toast('Para actualizar, abre la app en claude.ai con el conector Parallel Search conectado.');
+  b.disabled = true; b.textContent = '⟳ Comprobando…';
+  try {
+    const [man] = await traer(['app/manifest.json']);
+    const m = JSON.parse(man);
+    if (m.actualizado <= D.actualizado) { toast(`Ya tienes los datos más recientes (${m.actualizado.slice(8,10)}/${m.actualizado.slice(5,7)} ${m.actualizado.slice(11)}). Se recalculan cada día laborable hacia las 11:30.`); return; }
+    b.textContent = '⟳ Descargando…';
+    const idx = [...Array(m.partes).keys()], partes = [];
+    for (let k = 0; k < idx.length; k += 15) partes.push(...await traer(idx.slice(k, k+15).map(i => `app/parte_${i}.txt`)));
+    const txt = partes.join('');
+    if (partes.some(p => p == null) || txt.length !== m.longitud) throw new Error(`descarga incompleta (${txt.length} de ${m.longitud} caracteres)`);
+    const paquete = JSON.parse(txt);
+    aplicar(paquete, 'remoto');
+    toast(`Datos actualizados: ${m.actualizado.slice(8,10)}/${m.actualizado.slice(5,7)} ${m.actualizado.slice(11)}.`);
+    if (db) { try { for (let k = 0; k < partes.length; k++) await db.doc('datos/p' + k).set({t: partes[k]}); await db.doc('datos/manifest').set(m); } catch(e) { console.warn('no se guardó la copia', e); } }
+  } catch(e) {
+    const c = e && e.code;
+    toast(c==='server_not_connected' || c==='needs_reauth' ? 'Conecta "Parallel Search" en claude.ai → Ajustes → Conectores para actualizar.' : c==='approval_required' || c==='not_in_manifest' ? 'Permite a la app usar Parallel Search para actualizar.' : 'No se pudo actualizar: ' + (e.message || c || e));
+  } finally { b.disabled = false; b.textContent = '⟳ Actualizar datos'; }
+}
+async function datosGuardados(){
+  try {
+    const m = await db.doc('datos/manifest').get(); if (!m.exists) return;
+    const man = m.data(); if (man.actualizado <= D.actualizado) return;
+    const partes = []; for (let k = 0; k < man.partes; k++) { const d = await db.doc('datos/p' + k).get(); if (!d.exists) return; partes.push(d.data().t); }
+    const txt = partes.join(''); if (txt.length !== man.longitud) return;
+    aplicar(JSON.parse(txt), 'guardado');
+  } catch(e) { console.warn('copia guardada no disponible', e); }
 }
 
 async function conectar(){
@@ -284,6 +339,7 @@ async function conectar(){
   c.use('mcp').then(m => { mcp = m; });
   db = await c.use('db');
   if (!db) { pintar(); return; }
+  datosGuardados();
   const sub = (col, dest, cb) => db.collection(col).onSnapshot(snap => {
     for (const k in dest) delete dest[k];
     snap.docs.forEach(d => dest[d.id] = d.data());
@@ -295,6 +351,7 @@ async function conectar(){
 
 // ============================ navegación ============================
 document.querySelectorAll('#tabs .tab').forEach(b => b.onclick = () => irA(b.dataset.t));
+$('#bActualizar').onclick = actualizarDatos;
 function irA(t){
   tab = t; try { localStorage.setItem('rb_tab', t); } catch(e) {}
   document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('on', b.dataset.t===t));
@@ -336,7 +393,15 @@ function sparkline(s, color){
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" vector-effect="non-scaling-stroke"/></svg>`;
 }
 const SERIE = {};
-async function serie(t){ if (SERIE[t] !== undefined) return SERIE[t]; try { const r = await fetch(`data/series/${fname(t)}.json`); SERIE[t] = r.ok ? await r.json() : null; if (SERIE[t] && !SERIE[t].d) SERIE[t] = null; } catch(e) { SERIE[t] = null; } return SERIE[t]; }
+async function serie(t, forzarRemota){
+  if (SERIE[t] !== undefined && SERIE[t] !== null) return SERIE[t];
+  let s = null;
+  const local = async () => { try { const r = await fetch(`data/series/${fname(t)}.json`); const j = r.ok ? await r.json() : null; return j && j.d ? j : null; } catch(e) { return null; } };
+  if (!REMOTO && !forzarRemota) s = await local();
+  if (!s && mcp) { try { const [txt] = await traer([`series/${fname(t)}.json`]); const j = txt ? JSON.parse(txt) : null; if (j && j.d) s = j; } catch(e) {} }
+  if (!s && (REMOTO || forzarRemota)) s = await local();
+  SERIE[t] = s; return s;
+}
 
 function fichaHTML(t, opts={}){
   const f = FICHAS[fid(t)];
@@ -488,8 +553,8 @@ function tarjetaMinima(t){
   return `<article class="tarj"><div class="cabt"><div><div class="nom">${esc(u?u[1]:t)}</div><div class="meta">${esc(t)}${u?' · '+esc(u[2]||'')+' · '+esc(u[3]):''}</div></div>
     ${u?`<div class="big ${u[6]<0?'neg':''}">${u[6]>0?'+':''}${num(u[6],1)}%<small>vs nivel habitual</small></div>`:''}</div>
     <div class="stats"><span class="badge b-verde">★ siguiendo</span>${u?`<span class="st">1 mes ${pct(u[8])}</span><span class="st">1 año ${pct(u[9])}</span>`:''}</div>
-    ${fichaHTML(t)}<div class="sinficha"><span>Gráfico, estadística y fundamentales a partir de la próxima actualización de datos.</span></div>
-    <div class="pie">${db?`<button class="btn sm ghost" data-noseguir="${esc(t)}">Dejar de seguir</button>`:''}<span class="fecha">${fechaFicha(t)}</span></div></article>`;
+    ${fichaHTML(t)}
+    <div class="pie"><button class="btn sm" data-det="${esc(t)}">Gráfico y estadística</button><button class="btn sm" data-anadir="${esc(t)}">Añadir a cartera</button>${db?`<button class="btn sm ghost" data-noseguir="${esc(t)}">Dejar de seguir</button>`:''}<span class="fecha">${fechaFicha(t)}</span></div></article>`;
 }
 async function seguir(t, si){
   if (!db) return toast('Abre la app en claude.ai para guardar.');
@@ -683,8 +748,9 @@ function md(t){
 // ============================ DETALLE ============================
 let detChart = null, detEstado = {};
 async function abrirDetalle(t){
-  const i = item(t);
-  if (!i) { const u = UX[t]; if (u) { toast(`${u[1]}: ${num(u[6],1)}% vs nivel habitual. Su gráfico estará disponible cuando entre en el radar o en tu cartera.`); } return; }
+  let i = item(t);
+  if (!i && UX[t]) { toast('Cargando ' + UX[t][1] + '…'); const s0 = await serie(t, true); if (s0 && s0.i) { IDX[t] = s0.i; i = s0.i; } }
+  if (!i) { const u = UX[t]; if (u) toast(`${u[1]}: ${num(u[6],1)}% vs nivel habitual. No he podido cargar su detalle (necesita el conector Parallel Search).`); return; }
   cerrarTodo();
   $('#velo').classList.add('on'); $('#detalle').classList.add('on');
   const l = i.lectura, f = i.fund || {};
@@ -725,11 +791,15 @@ async function abrirDetalle(t){
 }
 function puntos(){
   const {s, r, desde, hasta} = detEstado; if (!s) return [];
-  const N = {'1M':22,'3M':64,'6M':127,'1A':253,'3A':757,'5A':99999};
+  const N = {'1M':22,'3M':64,'6M':127,'1A':253,'2A':99999};
+  const largo = () => [...(s.w||[]).map(x => [x[0], x[1], null]), ...s.d];
+  if (r==='3A') { const d0 = sumaDias(s.d[s.d.length-1][0], -3*365); return largo().filter(x => x[0] >= d0); }
+  if (r==='5A') { const d0 = sumaDias(s.d[s.d.length-1][0], -5*365); return largo().filter(x => x[0] >= d0); }
   if (r && r!=='Máx') return s.d.slice(-N[r]);
   if (r==='Máx') return s.m.map(x => [x[0], x[1], null]);
   const d0 = desde || '1900-01-01', d1 = hasta || '2999-12-31';
   if (d0 >= s.d[0][0]) return s.d.filter(x => x[0]>=d0 && x[0]<=d1);
+  if (s.w && s.w.length && d0 >= s.w[0][0]) return [...s.w.map(x => [x[0], x[1], null]), ...s.d].filter(x => x[0]>=d0 && x[0]<=d1);
   return s.m.filter(x => x[0]>=d0.slice(0,7) && x[0]<=d1.slice(0,7)).map(x => [x[0], x[1], null]);
 }
 function dibujar(){
@@ -912,7 +982,7 @@ $('#bAyuda').onclick = () => lateral('Cómo leer RadarBolsa', `<div class="glos"
   <div class="caja k-con"><div class="t">${ICO.con}Ticket orientativo</div><p>Sugerencia según tu rango (1.000–2.500 €): más para ETF con histórico favorable, menos para empresas sueltas o volátiles. Ajústalo en ⚙.</p></div>
   <div class="caja k-neg"><div class="t">${ICO.neg}¿Por qué dos productos por sector?</div><p>Los ETF sectoriales de EE. UU. tienen historia desde 1998 (mejor estadística), pero desde la UE no se pueden comprar. Al lado tienes el ETF europeo (UCITS) equivalente; verifica el ISIN en Trade Republic.</p></div>
   <div class="caja k-cae"><div class="t">${ICO.cae}Horarios y fiscalidad</div><p>ETF europeos: compra entre 9:30 y 17:30. Acciones de EE. UU.: a partir de las 15:30. Los fondos indexados permiten traspasos sin tributar; los ETF y las acciones tributan al vender con ganancia.</p></div>
-  </div><p class="hint" style="margin-top:14px">Datos de Yahoo Finance, actualizados de lunes a viernes hacia las 11:50. Las lecturas históricas y los análisis de Claude no son asesoramiento financiero.</p>`);
+  </div><p class="hint" style="margin-top:14px">Datos de Yahoo Finance, recalculados de lunes a viernes hacia las 11:30; pulsa «Actualizar datos» para traerlos. Las lecturas históricas y los análisis de Claude no son asesoramiento financiero.</p>`);
 
 cargar();
 }
